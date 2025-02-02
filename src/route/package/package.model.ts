@@ -94,7 +94,8 @@ export const packagePostModel = async (params: {
   let bountyLogs: Prisma.package_ally_bounty_logCreateManyInput[] = [];
 
   let transactionLogs: Prisma.alliance_transaction_tableCreateManyInput[] = [];
-
+  let notificationLogs: Prisma.alliance_notification_tableCreateManyInput[] =
+    [];
   const connectionData = await prisma.$transaction(async (tx) => {
     const connectionData = await tx.package_member_connection_table.create({
       data: {
@@ -163,9 +164,24 @@ export const packagePostModel = async (params: {
           return {
             transaction_member_id: ref.referrerId,
             transaction_amount: calculatedEarnings,
-            transaction_description: "Refer & Earn",
+            transaction_description:
+              ref.level === 1
+                ? "Referral Income"
+                : `Network Income ${ref.level}${
+                    ref.level === 2 ? "nd" : ref.level === 3 ? "rd" : "th"
+                  } level`,
           };
         });
+
+        notificationLogs = batch.map((ref) => ({
+          alliance_notification_user_id: ref.referrerId,
+          alliance_notification_message:
+            ref.level === 1
+              ? "Referral Income"
+              : `Network Income ${ref.level}${
+                  ref.level === 2 ? "nd" : ref.level === 3 ? "rd" : "th"
+                } level`,
+        }));
 
         await Promise.all(
           batch.map(async (ref) => {
@@ -199,6 +215,9 @@ export const packagePostModel = async (params: {
       prisma.alliance_transaction_table.createMany({
         data: transactionLogs,
       }),
+      prisma.alliance_notification_table.createMany({
+        data: notificationLogs,
+      }),
     ]);
   }
 
@@ -207,6 +226,7 @@ export const packagePostModel = async (params: {
       where: { alliance_member_id: teamMemberProfile.alliance_member_id },
       data: {
         alliance_member_is_active: true,
+        alliance_member_date_updated: new Date(),
       },
     });
   }
@@ -291,7 +311,7 @@ export const packageUpdatePutModel = async (params: {
   packageDays: string;
   packageColor: string;
   packageId: string;
-  package_image: string;
+  packageImage: string;
 }) => {
   const {
     packageName,
@@ -301,7 +321,7 @@ export const packageUpdatePutModel = async (params: {
     packageDays,
     packageColor,
     packageId,
-    package_image,
+    packageImage,
   } = params;
 
   const updatedPackage = await prisma.$transaction(
@@ -314,8 +334,8 @@ export const packageUpdatePutModel = async (params: {
           package_percentage: parseFloat(packagePercentage),
           packages_days: parseInt(packageDays),
           package_is_disabled: packageIsDisabled,
-          package_color: packageColor,
-          package_image: package_image ? package_image : undefined,
+          package_color: packageColor ? packageColor : undefined,
+          package_image: packageImage ? packageImage : undefined,
         },
       });
     }
@@ -354,9 +374,9 @@ export const claimPackagePostModel = async (params: {
       throw new Error("Invalid request.");
     }
 
-    if (!packageConnection.package_member_is_ready_to_claim) {
-      throw new Error("Invalid request. Package is not ready to claim.");
-    }
+    // if (!packageConnection.package_member_is_ready_to_claim) {
+    //   throw new Error("Invalid request. Package is not ready to claim.");
+    // }
 
     const totalClaimedAmount =
       packageConnection.package_member_amount +
@@ -430,6 +450,8 @@ export const packageListGetModel = async (params: {
           package_name: true,
           package_color: true,
           packages_days: true,
+          package_percentage: true,
+          package_image: true,
         },
       },
     },
@@ -454,11 +476,6 @@ export const packageListGetModel = async (params: {
         totalTimeMs > 0 ? (elapsedTimeMs / totalTimeMs) * 100 : 100;
       percentage = Math.min(percentage, 100);
 
-      // Calculate current amount
-      const initialAmount = row.package_member_amount;
-      const profitAmount = row.package_amount_earnings;
-      const currentAmount = initialAmount + (profitAmount * percentage) / 100;
-
       if (percentage === 100 && !row.package_member_is_ready_to_claim) {
         await prisma.package_member_connection_table.update({
           where: {
@@ -469,15 +486,16 @@ export const packageListGetModel = async (params: {
       }
 
       return {
+        amount: Number(row.package_member_amount.toFixed(2)),
         package: row.package_table.package_name,
         package_color: row.package_table.package_color || "#FFFFFF",
-        completion_date: completionDate?.toISOString(),
-        amount: Number(row.package_member_amount.toFixed(2)),
-        completion: Number(percentage.toFixed(2)),
+        package_date_created: row.package_member_connection_created,
         package_connection_id: row.package_member_connection_id,
         profit_amount: Number(row.package_amount_earnings.toFixed(2)),
-        current_amount: Number(Math.trunc(currentAmount)),
-        is_ready_to_claim: percentage === 100,
+        package_image: row.package_table.package_image,
+        completion_date: completionDate?.toISOString(),
+        completion: Number(percentage.toFixed(2)),
+        is_ready_to_claim: true,
       };
     })
   );
@@ -529,9 +547,9 @@ function generateReferralChain(
 function getBonusPercentage(level: number): number {
   const bonusMap: Record<number, number> = {
     1: 10,
-    2: 3,
-    3: 2,
-    4: 1,
+    2: 1.5,
+    3: 1.5,
+    4: 1.5,
     5: 1,
     6: 1,
     7: 1,

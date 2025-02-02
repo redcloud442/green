@@ -20,6 +20,32 @@ export type UserRequestdata = {
   user_date_created: string;
 };
 
+export type BankingEmailNotificationTemplateProps = {
+  to: string;
+  subject: string;
+  accountHolderName?: string;
+  accountNumber?: string;
+  accountBank?: string;
+  accountType?: string;
+  transactionDetails?: {
+    date: string;
+    description: string;
+    amount: string;
+    balance: string;
+  };
+  message: string;
+  greetingPhrase: string;
+  closingPhrase: string;
+  signature: string;
+  attachments?: [
+    {
+      filename: string;
+      path: string;
+      content_id: string;
+    }
+  ];
+};
+
 export type TopUpRequestData = alliance_top_up_request_table & {
   user_username: string;
   user_first_name: string;
@@ -67,4 +93,11 @@ export type PackageMemberWithPackage = package_member_connection_table & {
     package_color: string | null;
     packages_days: number | null;
   };
+};
+
+export type EmailBatchData = {
+  to: string;
+  from: string;
+  subject: string;
+  html: string;
 };

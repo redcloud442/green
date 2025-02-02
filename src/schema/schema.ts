@@ -33,6 +33,8 @@ export const loginCheckSchema = z.object({
 //register
 
 export const registerUserSchema = z.object({
+  activeMobile: z.string().min(11),
+  activeEmail: z.string().email(),
   userId: z.string().uuid(),
   userName: z.string().min(6),
   password: z.string().min(6),
@@ -47,15 +49,17 @@ export const registerUserSchema = z.object({
 export const depositSchema = z.object({
   amount: z
     .string()
-    .min(3, "Amount is required and must be at least 200 pesos")
+    .min(3, "Amount is required and must be at least 300 pesos")
     .max(6, "Amount must be less than 6 digits")
     .regex(/^\d+$/, "Amount must be a number")
-    .refine((amount) => parseInt(amount, 10) >= 200, {
-      message: "Amount must be at least 200 pesos",
+    .refine((amount) => parseInt(amount, 10) >= 300, {
+      message: "Amount must be at least 300 pesos",
     }),
   topUpMode: z.string().min(1, "Top up mode is required"),
   accountName: z.string().min(1, "Field is required"),
   accountNumber: z.string().min(1, "Field is required"),
+  receipt: z.string().min(1, "Receipt is required").max(5),
+  publicUrl: z.string().min(1, "Receipt is required"),
 });
 
 export type DepositFormValues = z.infer<typeof depositSchema>;
@@ -68,7 +72,7 @@ export const updateDepositSchema = z.object({
 
 export const depositHistoryPostSchema = z.object({
   page: z.number().min(1),
-  limit: z.number().min(1),
+  limit: z.number().min(1).max(10),
   search: z.string().optional(),
   sortBy: z.string().optional(),
   columnAccessor: z.string().min(3),
@@ -131,7 +135,7 @@ export const userSponsorSchema = z.object({
 
 export const userListSchema = z.object({
   page: z.number().min(1),
-  limit: z.number().min(1),
+  limit: z.number().min(1).max(10),
   search: z.string().optional(),
   columnAccessor: z.string().min(3),
   isAscendingSort: z.boolean(),
@@ -142,10 +146,16 @@ export const userListSchema = z.object({
 
 export const userActiveListSchema = z.object({
   page: z.number().min(1),
-  limit: z.number().min(1),
+  limit: z.number().min(1).max(10),
   search: z.string().optional(),
   columnAccessor: z.string().min(3),
   isAscendingSort: z.boolean(),
+});
+
+export const userPreferredBankSchema = z.object({
+  accountNumber: z.string().min(1),
+  accountName: z.string().min(1),
+  bankName: z.string().min(1),
 });
 
 //transaction schema
@@ -158,19 +168,19 @@ export const transactionSchemaPost = z.object({
 //referral schema
 
 export const directReferralsSchemaPost = z.object({
-  page: z.string().min(1),
-  limit: z.string().min(1),
+  page: z.number().min(1),
+  limit: z.number().min(1).max(10),
   search: z.string().optional(),
   columnAccessor: z.string().min(3),
-  isAscendingSort: z.string(),
+  isAscendingSort: z.boolean(),
 });
 
 export const indirectReferralsSchemaPost = z.object({
-  page: z.string().min(1),
-  limit: z.string().min(1),
+  page: z.number().min(1),
+  limit: z.number().min(1).max(10),
   search: z.string().optional(),
   columnAccessor: z.string().min(3),
-  isAscendingSort: z.string(),
+  isAscendingSort: z.boolean(),
 });
 
 //packages schema
@@ -198,7 +208,7 @@ export const updatePackageSchema = z.object({
   packageDays: z.string().min(1),
   packageIsDisabled: z.boolean(),
   packageColor: z.string().nullable().optional(),
-  package_image: z.string().nullable().optional(),
+  packageImage: z.string().nullable().optional(),
   packageId: z.string().uuid(),
 });
 
@@ -237,9 +247,9 @@ export const withdrawPostSchema = z.object({
   earnings: z.string(),
   amount: z
     .string()
-    .min(3, "Minimum amount is required atleast 200 pesos")
-    .refine((amount) => parseInt(amount, 10) >= 200, {
-      message: "Amount must be at least 200 pesos",
+    .min(2, "Minimum amount is required atleast 30 pesos")
+    .refine((amount) => parseInt(amount, 10) >= 30, {
+      message: "Amount must be at least 30 pesos",
     }),
   bank: z.string().min(1, "Please select a bank"),
   accountName: z
@@ -298,7 +308,7 @@ export const dashboardPostSchema = z.object({
 
 export const leaderboardPostSchema = z.object({
   leaderBoardType: z.enum(["DIRECT", "INDIRECT"]),
-  limit: z.number().min(1),
+  limit: z.number().min(1).max(10),
   page: z.number().min(1),
 });
 
@@ -307,4 +317,86 @@ export const leaderboardPostSchema = z.object({
 export const userOptionsPostSchema = z.object({
   page: z.number().min(1).max(10),
   limit: z.number().min(1).max(500),
+});
+
+//socket schema
+
+export const socketSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+export const socketJoinRoomSchema = z.object({
+  teamMemberId: z.string().uuid(),
+});
+
+export const socketGetNotificationSchema = z.object({
+  teamMemberId: z.string().uuid(),
+  take: z.number().max(100).optional(),
+});
+
+//email schema
+
+export const emailPostSchema = z.object({
+  to: z.string().email(),
+  subject: z.string().min(3),
+  accountHolderName: z.string().min(1).optional(),
+  accountBank: z.string().min(1).optional(),
+  accountType: z.string().min(1).optional(),
+  accountNumber: z.string().min(1).optional(),
+  transactionDetails: z
+    .object({
+      date: z.string().min(1),
+      description: z.string().min(1).optional(),
+      amount: z.string().min(1).optional(),
+      balance: z.string().optional(),
+    })
+    .optional(),
+  message: z.string().min(1),
+  greetingPhrase: z.string().min(3),
+  closingPhrase: z.string().min(3),
+  signature: z.string().min(3),
+});
+
+export const emailBatchPostSchema = z.object({
+  batchData: z.array(
+    z.object({
+      to: z.string().email(),
+      from: z.string().email(),
+      subject: z.string().min(3),
+      html: z.any(),
+    })
+  ),
+});
+
+//messaging schema
+
+export const messagingPostSchema = z.object({
+  number: z.string().min(10).max(11),
+  message: z.string().min(1),
+});
+
+export const messagingBatchPostSchema = z.object({
+  number: z.array(z.string().min(10).max(11)),
+  message: z.string().min(1),
+});
+
+//nootification
+
+export const notificationPostSchema = z.object({
+  chartData: z.string().min(10).max(11),
+  memberId: z.string().min(1),
+});
+
+export const notificationBatchPostSchema = z.object({
+  page: z.number().min(1),
+  limit: z.number().min(1),
+});
+
+export const notificationBatchPutSchema = z.object({
+  batchData: z.array(
+    z.object({
+      packageConnectionId: z.string().uuid(),
+      teamMemberId: z.string().uuid(),
+    })
+  ),
 });

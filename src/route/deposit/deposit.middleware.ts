@@ -12,24 +12,11 @@ import {
   protectionMerchantAdmin,
 } from "../../utils/protection.js";
 import { rateLimit } from "../../utils/redis.js";
-import { supabaseClient } from "../../utils/supabase.js";
 
 export const depositMiddleware = async (c: Context, next: Next) => {
-  const token = c.req.header("Authorization")?.split("Bearer ")[1];
+  const user = c.get("user");
 
-  if (!token) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const supabase = supabaseClient;
-
-  const user = await supabase.auth.getUser(token);
-
-  if (user.error) {
-    return null;
-  }
-
-  const response = await protectionMemberUser(user.data.user.id, prisma);
+  const response = await protectionMemberUser(user.id, prisma);
 
   if (response instanceof Response) {
     return response;
@@ -51,14 +38,16 @@ export const depositMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Too Many Requests", 429);
   }
 
-  const { TopUpFormValues } = await c.req.json();
+  const { TopUpFormValues, publicUrl } = await c.req.json();
 
-  const { amount, topUpMode, accountName, accountNumber } =
+  const { amount, topUpMode, accountName, accountNumber, receipt } =
     TopUpFormValues as unknown as {
       amount: number;
       topUpMode: string;
       accountName: string;
       accountNumber: string;
+      receipt: string;
+      publicUrl: string;
     };
 
   const sanitizedData = depositSchema.safeParse({
@@ -66,6 +55,8 @@ export const depositMiddleware = async (c: Context, next: Next) => {
     topUpMode,
     accountName,
     accountNumber,
+    receipt,
+    publicUrl,
   });
 
   if (!sanitizedData.success) {
@@ -73,26 +64,14 @@ export const depositMiddleware = async (c: Context, next: Next) => {
   }
 
   c.set("teamMemberProfile", teamMemberProfile);
-
+  c.set("params", sanitizedData.data);
   return await next();
 };
 
 export const depositPutMiddleware = async (c: Context, next: Next) => {
-  const token = c.req.header("Authorization")?.split(" ")[1];
+  const user = c.get("user");
 
-  if (!token) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const supabase = supabaseClient;
-
-  const user = await supabase.auth.getUser(token);
-
-  if (user.error) {
-    return null;
-  }
-
-  const response = await protectionMerchantAdmin(user.data.user.id, prisma);
+  const response = await protectionMerchantAdmin(user.id, prisma);
 
   if (response instanceof Response) {
     return response;
@@ -135,21 +114,9 @@ export const depositPutMiddleware = async (c: Context, next: Next) => {
 };
 
 export const depositHistoryPostMiddleware = async (c: Context, next: Next) => {
-  const token = c.req.header("Authorization")?.split(" ")[1];
+  const user = c.get("user");
 
-  if (!token) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const supabase = supabaseClient;
-
-  const user = await supabase.auth.getUser(token);
-
-  if (user.error) {
-    return null;
-  }
-
-  const response = await protectionMerchantAdmin(user.data.user.id, prisma);
+  const response = await protectionMerchantAdmin(user.id, prisma);
 
   if (response instanceof Response) {
     return response;
@@ -203,21 +170,9 @@ export const depositHistoryPostMiddleware = async (c: Context, next: Next) => {
 };
 
 export const depositListPostMiddleware = async (c: Context, next: Next) => {
-  const token = c.req.header("Authorization")?.split(" ")[1];
+  const user = c.get("user");
 
-  if (!token) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const supabase = supabaseClient;
-
-  const user = await supabase.auth.getUser(token);
-
-  if (user.error) {
-    return null;
-  }
-
-  const response = await protectionMerchantAdmin(user.data.user.id, prisma);
+  const response = await protectionMerchantAdmin(user.id, prisma);
 
   if (response instanceof Response) {
     return response;

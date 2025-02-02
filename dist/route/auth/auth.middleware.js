@@ -1,5 +1,4 @@
 import { loginCheckSchema, LoginSchema, registerUserSchema, } from "../../schema/schema.js";
-import { supabaseClient } from "../../utils/supabase.js";
 import { getClientIP, sendErrorResponse } from "../../utils/function.js";
 import { rateLimit } from "../../utils/redis.js";
 export const authMiddleware = async (c, next) => {
@@ -44,22 +43,16 @@ export const loginCheckMiddleware = async (c, next) => {
     await next();
 };
 export const registerUserMiddleware = async (c, next) => {
-    const token = c.req.header("Authorization")?.split("Bearer ")[1];
-    if (!token) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
-    const supabase = supabaseClient;
-    const user = await supabase.auth.getUser(token);
-    if (user.error) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
+    const user = c.get("user");
     const ip = getClientIP(c.req.raw);
-    const { userId, userName, password, firstName, lastName, referalLink, url } = await c.req.json();
+    const { userName, password, firstName, lastName, referalLink, url, activeMobile, activeEmail, } = await c.req.json();
     const parsed = registerUserSchema.safeParse({
+        activeMobile,
+        activeEmail,
         userName,
         password,
         firstName,
-        userId,
+        userId: user.id,
         lastName,
         referalLink,
         url,

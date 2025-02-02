@@ -3,18 +3,9 @@ import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionAccountingAdmin, protectionMemberUser, } from "../../utils/protection.js";
 import { rateLimit } from "../../utils/redis.js";
-import { supabaseClient } from "../../utils/supabase.js";
 export const withdrawPostMiddleware = async (c, next) => {
-    const token = c.req.header("Authorization")?.split("Bearer ")[1];
-    if (!token) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
-    const supabase = supabaseClient;
-    const user = await supabase.auth.getUser(token);
-    if (user.error) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
-    const response = await protectionMemberUser(user.data.user.id, prisma);
+    const user = c.get("user");
+    const response = await protectionMemberUser(user.id, prisma);
     if (response instanceof Response) {
         return response;
     }
@@ -37,26 +28,13 @@ export const withdrawPostMiddleware = async (c, next) => {
     if (!validate.success) {
         return sendErrorResponse(validate.error.message, 400);
     }
-    if (!["TOTAL"].includes(earnings)) {
-        return sendErrorResponse("Invalid request.", 400);
-    }
-    if (Number(amount) <= 0 || Number(amount) < 200) {
-        return sendErrorResponse("Invalid request.", 400);
-    }
     c.set("teamMemberProfile", teamMemberProfile);
+    c.set("params", validate.data);
     await next();
 };
 export const withdrawHistoryPostMiddleware = async (c, next) => {
-    const token = c.req.header("Authorization")?.split("Bearer ")[1];
-    if (!token) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
-    const supabase = supabaseClient;
-    const user = await supabase.auth.getUser(token);
-    if (user.error) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
-    const response = await protectionMemberUser(user.data.user.id, prisma);
+    const user = c.get("user");
+    const response = await protectionMemberUser(user.id, prisma);
     if (response instanceof Response) {
         return response;
     }
@@ -85,16 +63,8 @@ export const withdrawHistoryPostMiddleware = async (c, next) => {
     await next();
 };
 export const updateWithdrawMiddleware = async (c, next) => {
-    const token = c.req.header("Authorization")?.split("Bearer ")[1];
-    if (!token) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
-    const supabase = supabaseClient;
-    const user = await supabase.auth.getUser(token);
-    if (user.error) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
-    const response = await protectionAccountingAdmin(user.data.user.id, prisma);
+    const user = c.get("user");
+    const response = await protectionAccountingAdmin(user.id, prisma);
     if (response instanceof Response) {
         return response;
     }
@@ -120,16 +90,8 @@ export const updateWithdrawMiddleware = async (c, next) => {
     await next();
 };
 export const withdrawListPostMiddleware = async (c, next) => {
-    const token = c.req.header("Authorization")?.split("Bearer ")[1];
-    if (!token) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
-    const supabase = supabaseClient;
-    const user = await supabase.auth.getUser(token);
-    if (user.error) {
-        return sendErrorResponse("Unauthorized", 401);
-    }
-    const response = await protectionAccountingAdmin(user.data.user.id, prisma);
+    const user = c.get("user");
+    const response = await protectionAccountingAdmin(user.id, prisma);
     if (response instanceof Response) {
         return response;
     }
@@ -157,5 +119,22 @@ export const withdrawListPostMiddleware = async (c, next) => {
     }
     c.set("teamMemberProfile", teamMemberProfile);
     c.set("params", validate.data);
+    await next();
+};
+export const withdrawGetMiddleware = async (c, next) => {
+    const user = c.get("user");
+    const response = await protectionMemberUser(user.id, prisma);
+    if (response instanceof Response) {
+        return response;
+    }
+    const { teamMemberProfile } = response;
+    if (!teamMemberProfile) {
+        return sendErrorResponse("Unauthorized", 401);
+    }
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-list-post`, 100, 60);
+    if (!isAllowed) {
+        return sendErrorResponse("Too Many Requests", 429);
+    }
+    c.set("teamMemberProfile", teamMemberProfile);
     await next();
 };

@@ -10,24 +10,11 @@ import {
   protectionMemberUser,
 } from "../../utils/protection.js";
 import { rateLimit } from "../../utils/redis.js";
-import { supabaseClient } from "../../utils/supabase.js";
 
 export const referralDirectMiddleware = async (c: Context, next: Next) => {
-  const token = c.req.header("Authorization")?.split("Bearer ")[1];
+  const user = c.get("user");
 
-  if (!token) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const supabase = supabaseClient;
-
-  const user = await supabase.auth.getUser(token);
-
-  if (user.error) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const response = await protectionMemberUser(user.data.user.id, prisma);
+  const response = await protectionMemberUser(user.id, prisma);
 
   if (response instanceof Response) {
     return response;
@@ -65,26 +52,15 @@ export const referralDirectMiddleware = async (c: Context, next: Next) => {
   }
 
   c.set("teamMemberProfile", teamMemberProfile);
+  c.set("params", parsedData);
 
   await next();
 };
 
 export const referralIndirectMiddleware = async (c: Context, next: Next) => {
-  const token = c.req.header("Authorization")?.split("Bearer ")[1];
+  const user = c.get("user");
 
-  if (!token) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const supabase = supabaseClient;
-
-  const user = await supabase.auth.getUser(token);
-
-  if (user.error) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const response = await protectionMemberUser(user.data.user.id, prisma);
+  const response = await protectionMemberUser(user.id, prisma);
 
   if (response instanceof Response) {
     return response;
@@ -118,30 +94,18 @@ export const referralIndirectMiddleware = async (c: Context, next: Next) => {
   });
 
   if (!parsedData) {
-    return sendErrorResponse("Invalid data", 400);
+    return sendErrorResponse("Invalid request", 400);
   }
 
   c.set("teamMemberProfile", teamMemberProfile);
-
+  c.set("params", parsedData);
   await next();
 };
 
 export const referralTotalGetMiddleware = async (c: Context, next: Next) => {
-  const token = c.req.header("Authorization")?.split("Bearer ")[1];
+  const user = c.get("user");
 
-  if (!token) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const supabase = supabaseClient;
-
-  const user = await supabase.auth.getUser(token);
-
-  if (user.error) {
-    return sendErrorResponse("Unauthorized", 401);
-  }
-
-  const response = await protectionAdmin(user.data.user.id, prisma);
+  const response = await protectionAdmin(user.id, prisma);
 
   if (response instanceof Response) {
     return response;

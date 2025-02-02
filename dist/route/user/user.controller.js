@@ -1,9 +1,9 @@
-import { userActiveListModel, userGenerateLinkModel, userListModel, userModelGet, userModelPost, userModelPut, userPatchModel, userProfileModelPut, userSponsorModel, } from "./user.model.js";
+import { userActiveListModel, userChangePasswordModel, userGenerateLinkModel, userListModel, userModelGet, userModelPost, userModelPut, userPatchModel, userPreferredBankModel, userProfileModelPut, userSponsorModel, } from "./user.model.js";
 export const userPutController = async (c) => {
     try {
         const { email, password, userId } = await c.req.json();
         await userModelPut({ email, password, userId });
-        return c.json({ message: "User Updated" });
+        return c.json({ message: "User Updated" }, 200);
     }
     catch (error) {
         return c.json({ error: "Internal Server Error" }, { status: 500 });
@@ -13,7 +13,7 @@ export const userPostController = async (c) => {
     try {
         const { memberId } = await c.req.json();
         const user = await userModelPost({ memberId });
-        return c.json(user);
+        return c.json(user, 200);
     }
     catch (error) {
         return c.json({ error: "Internal Server Error" }, { status: 500 });
@@ -22,10 +22,10 @@ export const userPostController = async (c) => {
 export const userGetController = async (c) => {
     try {
         const teamMemberProfile = c.get("teamMemberProfile");
-        const isWithdrawalToday = await userModelGet({
+        const { isWithdrawalToday, canUserDeposit } = await userModelGet({
             memberId: teamMemberProfile.alliance_member_id,
         });
-        return c.json(isWithdrawalToday);
+        return c.json({ isWithdrawalToday, canUserDeposit }, 200);
     }
     catch (error) {
         return c.json({ error: "Internal Server Error" }, { status: 500 });
@@ -46,7 +46,7 @@ export const userSponsorController = async (c) => {
     try {
         const { userId } = await c.req.json();
         const data = await userSponsorModel({ userId });
-        return c.json({ data });
+        return c.json(data, 200);
     }
     catch (error) {
         return c.json({ error: "Internal Server Error" }, { status: 500 });
@@ -89,6 +89,27 @@ export const userActiveListController = async (c) => {
         const params = c.get("params");
         const data = await userActiveListModel(params);
         return c.json(data, { status: 200 });
+    }
+    catch (error) {
+        return c.json({ error: "Internal Server Error" }, { status: 500 });
+    }
+};
+export const userChangePasswordController = async (c) => {
+    try {
+        const params = c.get("params");
+        await userChangePasswordModel(params);
+        return c.json({ message: "Password Updated" }, 200);
+    }
+    catch (error) {
+        return c.json({ error: "Internal Server Error" }, { status: 500 });
+    }
+};
+export const userPreferredBankController = async (c) => {
+    try {
+        const params = c.get("params");
+        const teamMemberProfile = c.get("teamMemberProfile");
+        const data = await userPreferredBankModel(params, teamMemberProfile);
+        return c.json(data, 200);
     }
     catch (error) {
         return c.json({ error: "Internal Server Error" }, { status: 500 });

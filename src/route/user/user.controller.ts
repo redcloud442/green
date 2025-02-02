@@ -8,6 +8,7 @@ import {
   userModelPost,
   userModelPut,
   userPatchModel,
+  userPreferredBankModel,
   userProfileModelPut,
   userSponsorModel,
 } from "./user.model.js";
@@ -18,7 +19,7 @@ export const userPutController = async (c: Context) => {
 
     await userModelPut({ email, password, userId });
 
-    return c.json({ message: "User Updated" });
+    return c.json({ message: "User Updated" }, 200);
   } catch (error) {
     return c.json({ error: "Internal Server Error" }, { status: 500 });
   }
@@ -30,7 +31,7 @@ export const userPostController = async (c: Context) => {
 
     const user = await userModelPost({ memberId });
 
-    return c.json(user);
+    return c.json(user, 200);
   } catch (error) {
     return c.json({ error: "Internal Server Error" }, { status: 500 });
   }
@@ -40,11 +41,11 @@ export const userGetController = async (c: Context) => {
   try {
     const teamMemberProfile = c.get("teamMemberProfile");
 
-    const isWithdrawalToday = await userModelGet({
+    const { isWithdrawalToday, canUserDeposit } = await userModelGet({
       memberId: teamMemberProfile.alliance_member_id,
     });
 
-    return c.json(isWithdrawalToday);
+    return c.json({ isWithdrawalToday, canUserDeposit }, 200);
   } catch (error) {
     return c.json({ error: "Internal Server Error" }, { status: 500 });
   }
@@ -69,7 +70,7 @@ export const userSponsorController = async (c: Context) => {
 
     const data = await userSponsorModel({ userId });
 
-    return c.json({ data });
+    return c.json(data, 200);
   } catch (error) {
     return c.json({ error: "Internal Server Error" }, { status: 500 });
   }
@@ -132,7 +133,20 @@ export const userChangePasswordController = async (c: Context) => {
 
     await userChangePasswordModel(params);
 
-    return c.json({ message: "Password Updated" });
+    return c.json({ message: "Password Updated" }, 200);
+  } catch (error) {
+    return c.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+};
+
+export const userPreferredBankController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+    const teamMemberProfile = c.get("teamMemberProfile");
+
+    const data = await userPreferredBankModel(params, teamMemberProfile);
+
+    return c.json(data, 200);
   } catch (error) {
     return c.json({ error: "Internal Server Error" }, { status: 500 });
   }

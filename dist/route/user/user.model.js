@@ -1,3 +1,4 @@
+import { io } from "../../index.js";
 import { Prisma, } from "@prisma/client";
 import bcryptjs from "bcryptjs";
 import prisma from "../../utils/prisma.js";
@@ -66,8 +67,8 @@ export const userModelPost = async (params) => {
             indirect_referral_amount: true,
             total_earnings: true,
             total_withdrawals: true,
+            package_income: true,
             direct_referral_count: true,
-            indirect_referral_count: true,
         },
     });
     const userEarnings = await prisma.alliance_earnings_table.findUnique({
@@ -81,19 +82,96 @@ export const userModelPost = async (params) => {
             alliance_referral_bounty: true,
         },
     });
+    const userRaking = await prisma.alliance_ranking_table.findUnique({
+        where: {
+            alliance_ranking_member_id: memberId,
+        },
+        select: {
+            alliance_rank: true,
+            alliance_total_income_tag: true,
+        },
+    });
+    const earnings = Number(user?.total_earnings) || 0;
+    const referralCount = Number(user?.direct_referral_count) || 0;
+    const rankMapping = [
+        { threshold: 500, rank: "diamond" },
+        { threshold: 200, rank: "sapphire" },
+        { threshold: 150, rank: "ruby" },
+        { threshold: 100, rank: "emerald" },
+        { threshold: 50, rank: "platinum" },
+        { threshold: 20, rank: "gold" },
+        { threshold: 10, rank: "silver" },
+        { threshold: 6, rank: "bronze" },
+        { threshold: 3, rank: "iron" },
+    ];
+    const incomeTags = [
+        { threshold: 2000000, tag: "Multi Millionaire" },
+        { threshold: 1000000, tag: "Millionaire" },
+        { threshold: 500000, tag: "500k earner" },
+        { threshold: 100000, tag: "100k earner" },
+        { threshold: 50000, tag: "50k earner" },
+    ];
+    const applicableRank = rankMapping.find((rank) => referralCount >= rank.threshold)?.rank || null;
+    const applicableIncomeTag = incomeTags.find((tag) => earnings >= tag.threshold)?.tag || null;
+    const currentRank = userRaking ? userRaking.alliance_rank : null;
+    const currentIncomeTag = userRaking
+        ? userRaking.alliance_total_income_tag
+        : null;
+    if (currentRank !== applicableRank ||
+        currentIncomeTag !== applicableIncomeTag) {
+        if (currentRank !== applicableRank) {
+            await prisma.alliance_notification_table.create({
+                data: {
+                    alliance_notification_user_id: memberId,
+                    alliance_notification_message: `You have been promoted to ${applicableRank}!`,
+                },
+            });
+            io.to(`room-${memberId}`).emit("update-notification", {
+                message: `You have been promoted to ${applicableRank}!`,
+            });
+        }
+        if (currentIncomeTag !== applicableIncomeTag && applicableIncomeTag) {
+            await prisma.alliance_notification_table.create({
+                data: {
+                    alliance_notification_user_id: memberId,
+                    alliance_notification_message: `Congratulations! You have achieved the ${applicableIncomeTag} milestone!`,
+                },
+            });
+        }
+        await prisma.alliance_ranking_table.upsert({
+            where: {
+                alliance_ranking_member_id: memberId,
+            },
+            update: {
+                alliance_rank: applicableRank,
+                alliance_total_income_tag: applicableIncomeTag,
+            },
+            create: {
+                alliance_ranking_member_id: memberId,
+                alliance_rank: applicableRank,
+                alliance_total_income_tag: applicableIncomeTag,
+            },
+        });
+    }
+    const tags = [];
+    if (applicableIncomeTag)
+        tags.push(applicableIncomeTag);
     const totalEarnings = {
         directReferralAmount: user?.direct_referral_amount,
         indirectReferralAmount: user?.indirect_referral_amount,
         totalEarnings: user?.total_earnings,
         withdrawalAmount: user?.total_withdrawals,
         directReferralCount: user?.direct_referral_count,
-        indirectReferralCount: user?.indirect_referral_count,
+        package_income: user?.package_income,
+        rank: applicableRank,
+        totalIncomeTag: tags,
     };
-    return { totalEarnings, userEarningsData: userEarnings };
+    return { totalEarnings, userEarningsData: userEarnings, userRaking };
 };
 export const userModelGet = async (params) => {
     const { memberId } = params;
     let isWithdrawalToday = false;
+    let canUserDeposit = false;
     const today = new Date().toISOString().split("T")[0];
     const existingWithdrawal = await prisma.alliance_withdrawal_request_table.findFirst({
         where: {
@@ -115,10 +193,26 @@ export const userModelGet = async (params) => {
             ],
         },
     });
+    const existingDeposit = await prisma.alliance_top_up_request_table.findFirst({
+        where: {
+            alliance_top_up_request_member_id: memberId,
+            alliance_top_up_request_status: "PENDING",
+        },
+        take: 1,
+        orderBy: {
+            alliance_top_up_request_date: "desc",
+        },
+        select: {
+            alliance_top_up_request_id: true,
+        },
+    });
     if (existingWithdrawal) {
         isWithdrawalToday = true;
     }
-    return { isWithdrawalToday };
+    if (existingDeposit) {
+        canUserDeposit = true;
+    }
+    return { isWithdrawalToday, canUserDeposit };
 };
 export const userPatchModel = async (params) => {
     const { memberId, action, role } = params;
@@ -127,6 +221,7 @@ export const userPatchModel = async (params) => {
             where: { alliance_member_id: memberId },
             data: {
                 alliance_member_role: role,
+                alliance_member_date_updated: new Date(),
                 alliance_member_is_active: role &&
                     ["ADMIN", "MERCHANT", "ACCOUNTING"].some((r) => role.includes(r))
                     ? true
@@ -169,15 +264,24 @@ export const userPatchModel = async (params) => {
 };
 export const userSponsorModel = async (params) => {
     const { userId } = params;
-    const supabase = supabaseClient;
-    const { data: userData, error } = await supabase.rpc("get_user_sponsor", {
-        input_data: { userId },
-    });
-    if (error) {
-        throw new Error("Failed to get user sponsor");
+    const user = await prisma.$queryRaw `
+  SELECT 
+        ut2.user_username
+      FROM user_schema.user_table ut
+      JOIN alliance_schema.alliance_member_table am
+        ON am.alliance_member_user_id = ut.user_id
+      JOIN alliance_schema.alliance_referral_table art
+        ON art.alliance_referral_member_id = am.alliance_member_id
+      JOIN alliance_schema.alliance_member_table am2
+        ON am2.alliance_member_id = art.alliance_referral_from_member_id
+      JOIN user_schema.user_table ut2
+        ON ut2.user_id = am2.alliance_member_user_id
+      WHERE ut.user_id = ${userId}::uuid
+  `;
+    if (!user) {
+        return { success: false, error: "User not found." };
     }
-    const { data } = userData;
-    return data;
+    return user[0].user_username;
 };
 export const userProfileModelPut = async (params) => {
     const { profilePicture, userId } = params;
@@ -316,6 +420,7 @@ export const userActiveListModel = async (params) => {
       ut.user_username,
       ut.user_first_name,
       ut.user_last_name,
+      ut.user_profile_picture,
       am.alliance_member_is_active
     FROM user_schema.user_table ut
     JOIN alliance_schema.alliance_member_table am
@@ -345,4 +450,38 @@ export const userActiveListModel = async (params) => {
         data: usersWithActiveWallet,
         totalCount: Number(totalCount[0]?.count ?? 0),
     };
+};
+export const userChangePasswordModel = async (params) => {
+    const { password, userId } = params;
+    await prisma.$transaction(async (tx) => {
+        const user = await tx.user_table.findUnique({
+            where: { user_id: userId },
+        });
+        if (!user) {
+            throw new Error("User not found");
+        }
+        const hashedPassword = await bcryptjs.hash(password, 10);
+        await tx.user_table.update({
+            where: { user_id: userId },
+            data: { user_password: hashedPassword },
+        });
+        await supabaseClient.auth.admin.updateUserById(userId, {
+            password: password,
+        });
+    });
+};
+export const userPreferredBankModel = async (params, teamMemberProfile) => {
+    const { accountNumber, accountName, bankName } = params;
+    const data = await prisma.$transaction(async (tx) => {
+        const response = await tx.alliance_preferred_withdrawal_table.create({
+            data: {
+                alliance_preferred_withdrawal_member_id: teamMemberProfile.alliance_member_id,
+                alliance_preferred_withdrawal_account_number: accountNumber,
+                alliance_preferred_withdrawal_account_name: accountName,
+                alliance_preferred_withdrawal_bank_name: bankName,
+            },
+        });
+        return response;
+    });
+    return data;
 };

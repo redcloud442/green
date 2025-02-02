@@ -21,7 +21,7 @@ export const transactionModelGet = async (params) => {
             transaction_description: true,
             transaction_amount: true,
             transaction_date: true,
-            transaction_details: true,
+            transaction_id: true,
         },
         skip: offset,
         take: safeLimit,

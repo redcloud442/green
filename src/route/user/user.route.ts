@@ -7,6 +7,7 @@ import {
   userListController,
   userPatchController,
   userPostController,
+  userPreferredBankController,
   userProfilePutController,
   userPutController,
   userSponsorController,
@@ -19,6 +20,7 @@ import {
   userListMiddleware,
   userPatchMiddleware,
   userPostMiddleware,
+  userPreferredBankMiddleware,
   userProfilePutMiddleware,
   userPutMiddleware,
   userSponsorMiddleware,
@@ -53,4 +55,11 @@ user.post("/sponsor", userSponsorMiddleware, userSponsorController);
 user.post("/list", userListMiddleware, userListController);
 
 user.post("/active-list", userActiveListMiddleware, userActiveListController);
+
+user.post(
+  "/preferred-bank",
+  userPreferredBankMiddleware,
+  userPreferredBankController
+);
+
 export default user;

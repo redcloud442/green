@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import {
   updateWithdrawPostController,
+  withdrawGetController,
   withdrawHistoryPostController,
   withdrawListPostController,
   withdrawPostController,
 } from "./withdraw.controller.js";
 import {
   updateWithdrawMiddleware,
+  withdrawGetMiddleware,
   withdrawHistoryPostMiddleware,
   withdrawListPostMiddleware,
   withdrawPostMiddleware,
@@ -15,6 +17,8 @@ import {
 const withdraw = new Hono();
 
 withdraw.post("/", withdrawPostMiddleware, withdrawPostController);
+
+withdraw.get("/", withdrawGetMiddleware, withdrawGetController);
 
 withdraw.post(
   "/history",
