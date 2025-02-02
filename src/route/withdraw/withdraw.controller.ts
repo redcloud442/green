@@ -33,7 +33,7 @@ export const withdrawHistoryPostController = async (c: Context) => {
 
     const data = await withdrawHistoryModel(params, teamMemberProfile);
 
-    return c.json({ data }, 200);
+    return c.json(data, 200);
   } catch (e) {
     return sendErrorResponse("Internal Server Error", 500);
   }

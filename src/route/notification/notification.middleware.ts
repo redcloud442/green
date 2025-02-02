@@ -31,7 +31,6 @@ export const notificationPostMiddleware = async (c: Context, next: Next) => {
   });
 
   if (!sanitizedData.success) {
-    console.log(sanitizedData.error);
     return sendErrorResponse("Invalid Request", 400);
   }
 
