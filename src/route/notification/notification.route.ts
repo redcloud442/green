@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import { notificationPostController } from "./notification.controller.js";
-import { notificationPostMiddleware } from "./notification.middleware.js";
+import {
+  notificationPostMiddleware,
+  notificationPutMiddleware,
+} from "./notification.middleware.js";
 
 const notification = new Hono();
 
@@ -12,7 +15,7 @@ notification.post(
 
 notification.put(
   "/batch    ",
-  notificationPostMiddleware,
+  notificationPutMiddleware,
   notificationPostController
 );
 

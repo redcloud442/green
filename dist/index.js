@@ -13,7 +13,7 @@ app.use("*", supabaseMiddleware(), cors({
     origin: [
         process.env.NODE_ENV === "development"
             ? "http://localhost:3000"
-            : "https://primepinas.com",
+            : "https://elevateglobal.app",
     ],
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -32,11 +32,7 @@ const server = serve({
 });
 const io = new SocketIOServer(server, {
     cors: {
-        origin: [
-            "https://primepinas.com",
-            "https://www.primepinas.com",
-            "http://localhost:3000",
-        ],
+        origin: ["https://elevateglobal.app", "http://localhost:3000"],
         credentials: true,
     },
 });
