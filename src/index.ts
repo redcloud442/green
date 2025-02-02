@@ -2,7 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { Server as SocketIOServer } from "socket.io";
+import { Server } from "socket.io";
 import { envConfig } from "./env.js";
 import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
@@ -42,14 +42,16 @@ const server = serve({
   port: envConfig.PORT,
 });
 
-const io = new SocketIOServer(server, {
+const io = new Server(server, {
   cors: {
-    origin: ["https://elevateglobal.app", "http://localhost:3000"],
-
+    origin:
+      process.env.NODE_ENV === "production"
+        ? "https://elevateglobal.app"
+        : "http://localhost:3000",
+    methods: ["GET", "POST"],
     credentials: true,
   },
 });
-
 initializeSocketFunctions(io);
 
 export { io };
