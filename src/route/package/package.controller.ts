@@ -75,7 +75,7 @@ export const packagesUpdatePutController = async (c: Context) => {
       packageDays,
       packageIsDisabled,
       packageColor,
-      package_image,
+      packageImage,
     } = packageData;
 
     const id = c.req.param("id");
@@ -87,7 +87,7 @@ export const packagesUpdatePutController = async (c: Context) => {
       packageDays,
       packageIsDisabled,
       packageColor,
-      package_image,
+      packageImage,
       packageId: id,
     });
 

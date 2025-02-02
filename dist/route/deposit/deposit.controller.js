@@ -2,13 +2,18 @@ import { supabaseClient } from "../../utils/supabase.js";
 import { depositHistoryPostModel, depositListPostModel, depositPostModel, depositPutModel, } from "./deposit.model.js";
 export const depositPostController = async (c) => {
     const supabase = supabaseClient;
-    const { TopUpFormValues, publicUrl } = await c.req.json();
+    const { amount, topUpMode, accountName, accountNumber, receipt, publicUrl } = c.get("params");
     try {
         const teamMemberProfile = c.get("teamMemberProfile");
-        const { amount, topUpMode, accountName, accountNumber } = TopUpFormValues;
         await depositPostModel({
-            TopUpFormValues: { amount, topUpMode, accountName, accountNumber },
-            publicUrl: publicUrl,
+            TopUpFormValues: {
+                amount,
+                topUpMode,
+                accountName,
+                accountNumber,
+                receipt,
+                publicUrl,
+            },
             teamMemberProfile: teamMemberProfile,
         });
         return c.json({ message: "Deposit Created" }, { status: 200 });

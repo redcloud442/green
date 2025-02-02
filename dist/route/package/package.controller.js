@@ -44,7 +44,7 @@ export const packagesCreatePostController = async (c) => {
 export const packagesUpdatePutController = async (c) => {
     try {
         const { packageData } = await c.req.json();
-        const { packageName, packageDescription, packagePercentage, packageDays, packageIsDisabled, packageColor, package_image, } = packageData;
+        const { packageName, packageDescription, packagePercentage, packageDays, packageIsDisabled, packageColor, packageImage, } = packageData;
         const id = c.req.param("id");
         const result = await packageUpdatePutModel({
             packageName,
@@ -53,7 +53,7 @@ export const packagesUpdatePutController = async (c) => {
             packageDays,
             packageIsDisabled,
             packageColor,
-            package_image,
+            packageImage,
             packageId: id,
         });
         return c.json({ message: "Package Updated", data: result });

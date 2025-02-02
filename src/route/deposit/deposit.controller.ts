@@ -10,16 +10,21 @@ import {
 export const depositPostController = async (c: Context) => {
   const supabase = supabaseClient;
 
-  const { TopUpFormValues, publicUrl } = await c.req.json();
+  const { amount, topUpMode, accountName, accountNumber, receipt, publicUrl } =
+    c.get("params");
 
   try {
     const teamMemberProfile = c.get("teamMemberProfile");
 
-    const { amount, topUpMode, accountName, accountNumber } = TopUpFormValues;
-
     await depositPostModel({
-      TopUpFormValues: { amount, topUpMode, accountName, accountNumber },
-      publicUrl: publicUrl,
+      TopUpFormValues: {
+        amount,
+        topUpMode,
+        accountName,
+        accountNumber,
+        receipt,
+        publicUrl,
+      },
       teamMemberProfile: teamMemberProfile,
     });
 

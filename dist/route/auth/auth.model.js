@@ -110,18 +110,19 @@ export const adminModel = async (params) => {
     return { success: true };
 };
 export const registerUserModel = async (params) => {
-    const { userId, userName, password, firstName, lastName, referalLink, url } = params;
+    const { userId, userName, password, firstName, lastName, referalLink, url, activeMobile, activeEmail, } = params;
     if (referalLink) {
         const DEFAULT_ALLIANCE_ID = "35f77cd9-636a-41fa-a346-9cb711e7a338";
         return await prisma.$transaction(async (tx) => {
             const user = await tx.user_table.create({
                 data: {
                     user_id: userId,
-                    user_email: `${userName}@gmail.com`,
                     user_password: password,
                     user_first_name: firstName,
                     user_last_name: lastName,
                     user_username: userName,
+                    user_active_mobile: activeMobile,
+                    user_email: activeEmail,
                 },
             });
             if (!user) {
@@ -137,7 +138,7 @@ export const registerUserModel = async (params) => {
                     alliance_member_id: true,
                 },
             });
-            const referralLinkURL = `${url}?referralLink=${encodeURIComponent(userName)}`;
+            const referralLinkURL = `${url}/${encodeURIComponent(userName)}`;
             await tx.alliance_referral_link_table.create({
                 data: {
                     alliance_referral_link: referralLinkURL,

@@ -3,8 +3,10 @@ import type {
   WithdrawReturnDataType,
 } from "@/utils/types.js";
 import { Prisma, type alliance_member_table } from "@prisma/client";
+import { io } from "../../index.js";
 import { calculateFee, calculateFinalAmount } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
+import { notificationGetModel } from "../notification/notification.model.js";
 
 export const withdrawModel = async (params: {
   earnings: string;
@@ -136,7 +138,6 @@ export const withdrawModel = async (params: {
         alliance_withdrawal_request_earnings_amount: olympusDeduction,
         alliance_withdrawal_request_referral_amount: referralDeduction,
         alliance_withdrawal_request_withdraw_type: earnings,
-        alliance_withdrawal_request_approved_by: countAllRequests[0].approverId,
       },
     });
 
@@ -158,12 +159,22 @@ export const withdrawModel = async (params: {
       },
     }),
       // Log the transaction
-      await tx.alliance_transaction_table.create({
+      await prisma.alliance_transaction_table.create({
         data: {
-          transaction_amount: finalAmount,
-          transaction_description: "Withdrawal Pending",
-          transaction_details: `Account Name: ${accountName}, Account Number: ${accountNumber}`,
+          transaction_amount: calculateFinalAmount(Number(amount), "TOTAL"),
+          transaction_description: "Withdrawal Ongoing",
           transaction_member_id: teamMemberProfile.alliance_member_id,
+        },
+      }),
+      await prisma.alliance_notification_table.create({
+        data: {
+          alliance_notification_user_id: teamMemberProfile.alliance_member_id,
+          alliance_notification_message: `Withdrawal request is Ongoing amounting to ₱ ${Math.floor(
+            calculateFinalAmount(Number(amount), earnings)
+          ).toLocaleString("en-US", {
+            maximumFractionDigits: 2,
+            minimumFractionDigits: 2,
+          })}. Please wait for approval.`,
         },
       });
   });
@@ -311,19 +322,48 @@ export const updateWithdrawModel = async (params: {
 
     await tx.alliance_transaction_table.create({
       data: {
-        transaction_description: `Withdrawal ${
-          status.slice(0, 1).toUpperCase() + status.slice(1).toLowerCase()
-        } ${note ? `(${note})` : ""}`,
-        transaction_details: `Account Name: ${updatedRequest.alliance_withdrawal_request_bank_name}, Account Number: ${updatedRequest.alliance_withdrawal_request_account}`,
-        transaction_amount: updatedRequest.alliance_withdrawal_request_amount,
+        transaction_description: `${
+          status === "APPROVED"
+            ? "Congratulations! Withdrawal Request Sent"
+            : `Withdrawal Request Failed, ${note}`
+        }`,
+
+        transaction_amount: Number(
+          updatedRequest.alliance_withdrawal_request_amount -
+            updatedRequest.alliance_withdrawal_request_fee
+        ),
         transaction_member_id:
           updatedRequest.alliance_withdrawal_request_member_id,
+      },
+    });
+
+    await tx.alliance_notification_table.create({
+      data: {
+        alliance_notification_user_id:
+          updatedRequest.alliance_withdrawal_request_member_id,
+        alliance_notification_message: `${
+          status === "APPROVED"
+            ? "Congratulations! Withdrawal Request Sent"
+            : `Withdrawal Request Failed, ${note}`
+        }`,
       },
     });
 
     return updatedRequest;
   });
 
+  const { notifications, count } = await notificationGetModel({
+    teamMemberId: result.alliance_withdrawal_request_member_id,
+    take: 10,
+  });
+
+  io.to(`room-${result.alliance_withdrawal_request_member_id}`).emit(
+    "notification-update",
+    {
+      notifications: notifications || [],
+      count: count || 0,
+    }
+  );
   return result;
 };
 
@@ -438,9 +478,12 @@ export const withdrawListPostModel = async (params: {
       u.user_last_name,
       u.user_email,
       u.user_username,
+      u.user_profile_picture,
       m.alliance_member_id,
       t.*,
-      approver.user_username AS approver_username
+      approver.user_username AS approver_username,
+      approver.user_profile_picture AS approver_profile_picture,
+      approver.user_id AS approver_id
     FROM alliance_schema.alliance_withdrawal_request_table t
     JOIN alliance_schema.alliance_member_table m 
       ON t.alliance_withdrawal_request_member_id = m.alliance_member_id
@@ -500,4 +543,17 @@ export const withdrawListPostModel = async (params: {
       typeof value === "bigint" ? value.toString() : value
     )
   );
+};
+
+export const withdrawGetModel = async (
+  teamMemberProfile: alliance_member_table
+) => {
+  const data = await prisma.alliance_preferred_withdrawal_table.findMany({
+    where: {
+      alliance_preferred_withdrawal_member_id:
+        teamMemberProfile.alliance_member_id,
+    },
+  });
+
+  return data;
 };

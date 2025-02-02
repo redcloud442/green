@@ -4,17 +4,11 @@ import { type DepositFormValues } from "../../schema/schema.js";
 import prisma from "../../utils/prisma.js";
 
 export const depositPostModel = async (params: {
-  TopUpFormValues: DepositFormValues;
-  publicUrl: string;
+  TopUpFormValues: DepositFormValues & { publicUrl: string };
   teamMemberProfile: alliance_member_table;
 }) => {
-  const { amount, accountName, accountNumber } = params.TopUpFormValues;
-
-  const { publicUrl } = params;
-
-  if (amount.length > 7 || amount.length < 3) {
-    throw new Error("Invalid amount");
-  }
+  const { amount, accountName, accountNumber, receipt, publicUrl } =
+    params.TopUpFormValues;
 
   const merchantData = await prisma.merchant_table.findFirst({
     where: {
@@ -37,6 +31,26 @@ export const depositPostModel = async (params: {
   }
 
   await prisma.$transaction(async (tx) => {
+    const existingDeposit =
+      await prisma.alliance_top_up_request_table.findFirst({
+        where: {
+          alliance_top_up_request_member_id:
+            params.teamMemberProfile.alliance_member_id,
+          alliance_top_up_request_status: "PENDING",
+        },
+        take: 1,
+        orderBy: {
+          alliance_top_up_request_date: "desc",
+        },
+        select: {
+          alliance_top_up_request_id: true,
+        },
+      });
+
+    if (existingDeposit) {
+      throw new Error("Invalid request");
+    }
+
     await tx.alliance_top_up_request_table.create({
       data: {
         alliance_top_up_request_amount: Number(amount),
@@ -46,13 +60,13 @@ export const depositPostModel = async (params: {
         alliance_top_up_request_attachment: publicUrl,
         alliance_top_up_request_member_id:
           params.teamMemberProfile.alliance_member_id,
+        alliance_top_up_request_receipt: receipt,
       },
     });
     await tx.alliance_transaction_table.create({
       data: {
         transaction_amount: Number(amount),
-        transaction_description: "Deposit Pending",
-        transaction_details: `Account Name: ${accountName} | Account Number: ${accountNumber}`,
+        transaction_description: "Deposit Ongoing",
         transaction_member_id: params.teamMemberProfile.alliance_member_id,
       },
     });
@@ -101,9 +115,8 @@ export const depositPutModel = async (params: {
     await tx.alliance_transaction_table.create({
       data: {
         transaction_description: `Deposit ${
-          status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+          status === "APPROVED" ? "Success" : "Failed"
         } ${note ? `(${note})` : ""}`,
-        transaction_details: `Account Name: ${updatedRequest.alliance_top_up_request_name}, Account Number: ${updatedRequest.alliance_top_up_request_account}`,
         transaction_amount: updatedRequest.alliance_top_up_request_amount,
         transaction_member_id: updatedRequest.alliance_top_up_request_member_id,
       },
@@ -353,9 +366,12 @@ export const depositListPostModel = async (
       u.user_last_name,
       u.user_email,
       u.user_username,
+      u.user_profile_picture,
       m.alliance_member_id,
       t.*,
-      approver.user_username AS approver_username
+      approver.user_username AS approver_username,
+      approver.user_profile_picture AS approver_profile_picture,
+      approver.user_id AS approver_id
     FROM alliance_schema.alliance_top_up_request_table t
     JOIN alliance_schema.alliance_member_table m 
       ON t.alliance_top_up_request_member_id = m.alliance_member_id

@@ -24,15 +24,15 @@ enum ReferralType {
   @@schema("alliance_schema")
 }
 
-
 model user_table {
   user_id               String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   user_date_created     DateTime        @default(now())
   user_username         String?
   user_first_name       String?
   user_last_name        String?
-  user_email            String          @unique
+  user_email            String
   user_password         String
+  user_active_mobile    String?
   user_profile_picture  String?
 
   alliance_member_table alliance_member_table[]
@@ -85,6 +85,9 @@ model alliance_member_table {
   package_ally_bounty_log package_ally_bounty_log[]
   package_earnings_log package_earnings_log[]
   alliance_transaction_table alliance_transaction_table[]
+  alliance_notification_table alliance_notification_table[]
+  alliance_preferred_withdrawal_table alliance_preferred_withdrawal_table[]
+  alliance_ranking_table alliance_ranking_table[]
 
   package_ally_bounty_log_from package_ally_bounty_log[] @relation("FromMember")
   @@schema("alliance_schema")
@@ -120,26 +123,46 @@ model alliance_referral_table {
 
 model dashboard_earnings_summary {
   member_id              String   @id @map("member_id") @db.Uuid
-  total_earnings         Float    @default(0.0) @map("total_earnings")
-  total_withdrawals      Float    @default(0.0) @map("total_withdrawals")
-  direct_referral_amount Float    @default(0.0) @map("direct_referral_amount")
-  indirect_referral_amount Float  @default(0.0) @map("indirect_referral_amount")
-  direct_referral_count  Int      @default(0) @map("direct_referral_count")
-  indirect_referral_count Int     @default(0) @map("indirect_referral_count")
+  total_earnings         Float    @default(0)  @map("total_earnings")
+  total_withdrawals      Float    @default(0)  @map("total_withdrawals")
+  direct_referral_amount Float    @default(0)  @map("direct_referral_amount")
+  indirect_referral_amount Float    @default(0)  @map("indirect_referral_amount")
+  direct_referral_count  Float      @default(0)  @map("direct_referral_count")
+  indirect_referral_count Float     @default(0)  @map("indirect_referral_count")
+  package_income         Float    @default(0)  @map("package_income")
 
   @@map("dashboard_earnings_summary")
   @@schema("alliance_schema")
 }
 
+model alliance_preferred_withdrawal_table {
+  alliance_preferred_withdrawal_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  alliance_preferred_withdrawal_account_name String
+  alliance_preferred_withdrawal_account_number String
+  alliance_preferred_withdrawal_bank_name String
+  alliance_preferred_withdrawal_member_id String @db.Uuid
+
+  alliance_member_table alliance_member_table @relation(fields: [alliance_preferred_withdrawal_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+  @@schema("alliance_schema")
+}
+
+model alliance_ranking_table {
+  alliance_ranking_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  alliance_rank String?
+  alliance_total_income_tag String?
+  alliance_ranking_member_id String @db.Uuid @unique
+
+  alliance_member_table alliance_member_table @relation(fields: [alliance_ranking_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+  @@schema("alliance_schema")
+}
 
 model alliance_earnings_table {
   alliance_earnings_id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  alliance_olympus_wallet      Float    @default(0.0)
-  alliance_olympus_earnings    Float    @default(0.0)
-  // alliance_ally_bounty         Float    @default(0.0)
-  // alliance_legion_bounty       Float    @default(0.0)
-  alliance_referral_bounty     Float    @default(0.0)
-  alliance_combined_earnings  Float    @default(0.0)
+  alliance_olympus_wallet      Float    @default(0)
+  alliance_olympus_earnings    Float    @default(0)
+  
+  alliance_referral_bounty     Float    @default(0)
+  alliance_combined_earnings  Float    @default(0)
   alliance_earnings_member_id  String   @db.Uuid @unique
 
   alliance_member_table            alliance_member_table @relation(fields: [alliance_earnings_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
@@ -155,7 +178,7 @@ model alliance_earnings_table {
 
 model alliance_top_up_request_table {
   alliance_top_up_request_id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  alliance_top_up_request_amount       Float     @default(0.0)
+  alliance_top_up_request_amount       Float    @default(0)
   alliance_top_up_request_date         DateTime  @default(now())
   alliance_top_up_request_status       String    @default("PENDING")
   alliance_top_up_request_type         String
@@ -168,7 +191,7 @@ model alliance_top_up_request_table {
   alliance_top_up_request_member_id    String    @db.Uuid
   alliance_top_up_request_approved_by  String?   @db.Uuid
   alliance_top_up_request_date_updated DateTime?
-
+  alliance_top_up_request_receipt      String @unique
 
   alliance_member_requestor           alliance_member_table @relation("Requestor", fields: [alliance_top_up_request_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -180,21 +203,23 @@ model alliance_top_up_request_table {
 
 model alliance_withdrawal_request_table {
   alliance_withdrawal_request_id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  alliance_withdrawal_request_amount    Float     @default(0.0)
-  alliance_withdrawal_request_fee       Float     @default(0.0)
-  alliance_withdrawal_request_withdraw_amount     Float     @default(0.0)
-  alliance_withdrawal_request_referral_amount     Float     @default(0.0)
-  alliance_withdrawal_request_earnings_amount     Float     @default(0.0)
+  alliance_withdrawal_request_amount    Float    @default(0)
+  alliance_withdrawal_request_fee       Float    @default(0)
+  alliance_withdrawal_request_withdraw_amount     Float    @default(0)
+  alliance_withdrawal_request_referral_amount     Float    @default(0)
+  alliance_withdrawal_request_earnings_amount     Float    @default(0)
   alliance_withdrawal_request_bank_name           String?
+  alliance_withdrawal_request_email               String?
+  alliance_withdrawal_request_cellphone_number    String?
 
   alliance_withdrawal_request_date      DateTime  @default(now())
+  alliance_withdrawal_request_date_updated DateTime?
   alliance_withdrawal_request_status    String    @default("APPROVED")
   alliance_withdrawal_request_account   String    @default("APPROVED")
   alliance_withdrawal_request_type      String
   alliance_withdrawal_request_withdraw_type String?
   alliance_withdrawal_request_member_id String    @db.Uuid
   alliance_withdrawal_request_approved_by  String?   @db.Uuid
-  alliance_withdrawal_request_date_updated DateTime?
 
   alliance_withdrawal_request_reject_note  String?
 
@@ -208,8 +233,7 @@ model alliance_transaction_table {
   transaction_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   transaction_date DateTime @default(now())
   transaction_description String
-  transaction_details String?
-  transaction_amount Float?
+  transaction_amount Float?  @default(0)
   transaction_member_id String @db.Uuid
 
   alliance_member_table alliance_member_table @relation(fields: [transaction_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
@@ -222,8 +246,8 @@ model package_table {
   package_id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   package_name       String
   package_description String
-  package_percentage Float    @default(0.0)
-  packages_days      Int
+  package_percentage Float    @default(0)
+  packages_days      Int      @default(0)
   package_is_disabled Boolean @default(false)
   package_color      String?
   package_image      String?
@@ -239,11 +263,12 @@ model package_member_connection_table {
   package_member_package_id            String   @db.Uuid
   package_member_member_id             String   @db.Uuid
   package_member_connection_created    DateTime @default(now())
-  package_member_amount                Float    @default(0.0)
-  package_amount_earnings              Float    @default(0.0)
+  package_member_amount                Float    @default(0)
+  package_amount_earnings              Float    @default(0)
   package_member_status                String
-  package_member_is_ready_to_claim     Boolean  @default(false)
   package_member_completion_date       DateTime?
+  package_member_is_ready_to_claim     Boolean  @default(false)
+  package_member_is_notified          Boolean  @default(false)
 
   package_table       package_table       @relation(fields: [package_member_package_id], references: [package_id], onDelete: Cascade, onUpdate: Cascade)
   alliance_member_table alliance_member_table @relation(fields: [package_member_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
@@ -262,8 +287,8 @@ model package_earnings_log {
   package_member_package_id            String   @db.Uuid
   package_member_member_id             String   @db.Uuid
   package_member_connection_created    DateTime @default(now())
-  package_member_amount                Float    @default(0.0)
-  package_member_amount_earnings       Float    @default(0.0)
+  package_member_amount                Float    @default(0)
+  package_member_amount_earnings       Float    @default(0)
   package_member_status                String
 
   package_table                       package_table       @relation(fields: [package_member_package_id], references: [package_id], onDelete: Cascade, onUpdate: Cascade)
@@ -282,7 +307,7 @@ model package_ally_bounty_log {
   package_ally_bounty_log_date_created    DateTime @default(now())
   package_ally_bounty_member_id           String   @db.Uuid
   package_ally_bounty_percentage          Float    @default(0.0)
-  package_ally_bounty_earnings            Float    @default(0.0)
+  package_ally_bounty_earnings            Float    @default(0)
   package_ally_bounty_type                String
   package_ally_bounty_connection_id       String   @db.Uuid
   package_ally_bounty_from                String?   @db.Uuid
@@ -290,6 +315,14 @@ model package_ally_bounty_log {
   alliance_member_table alliance_member_table @relation(fields: [package_ally_bounty_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
   package_member_connection_table package_member_connection_table @relation(fields: [package_ally_bounty_connection_id], references: [package_member_connection_id], onDelete: Cascade, onUpdate: Cascade)
   alliance_member_table_from alliance_member_table? @relation("FromMember",fields: [package_ally_bounty_from], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+  @@schema("packages_schema")
+}
+
+model package_notification_logs {
+  package_notification_logs_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  package_notification_logs_date DateTime @default(now())
+
+
   @@schema("packages_schema")
 }
 
@@ -303,6 +336,19 @@ model merchant_table {
   @@schema("merchant_schema")
 }
 
+
+model merchant_member_table {
+  merchant_member_id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  merchant_member_date_created     DateTime @default(now())
+  merchant_member_merchant_id      String   @db.Uuid
+  merchant_member_balance          Float    @default(0)
+
+  alliance_member_table alliance_member_table @relation(fields: [merchant_member_merchant_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@schema("merchant_schema")
+}
+
+
 model merchant_balance_log {
   merchant_balance_log_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   merchant_balance_log_date DateTime @default(now())
@@ -312,17 +358,6 @@ model merchant_balance_log {
   @@schema("merchant_schema")
 }
 
-
-model merchant_member_table {
-  merchant_member_id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  merchant_member_date_created     DateTime @default(now())
-  merchant_member_merchant_id      String   @db.Uuid
-  merchant_member_balance          Float    @default(0.0)
-
-  alliance_member_table alliance_member_table @relation(fields: [merchant_member_merchant_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@schema("merchant_schema")
-}
 
 
 model error_table {
@@ -334,4 +369,17 @@ model error_table {
   error_date_created      DateTime     @default(now())
 
   @@schema("public")
+}
+
+
+model alliance_notification_table {
+  alliance_notification_id                String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  alliance_notification_message           String
+  alliance_notification_date_created      DateTime     @default(now())
+  alliance_notification_user_id           String   @db.Uuid
+  alliance_notification_is_read           Boolean   @default(false)
+
+  alliance_member_table alliance_member_table @relation(fields: [alliance_notification_user_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@schema("alliance_schema")
 }
