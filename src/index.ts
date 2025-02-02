@@ -18,7 +18,7 @@ app.use(
     origin: [
       process.env.NODE_ENV === "development"
         ? "http://localhost:3000"
-        : "https://primepinas.com",
+        : "https://elevate.com",
     ],
 
     credentials: true,
@@ -44,11 +44,8 @@ const server = serve({
 
 const io = new SocketIOServer(server, {
   cors: {
-    origin: [
-      "https://primepinas.com",
-      "https://www.primepinas.com",
-      "http://localhost:3000",
-    ],
+    origin: ["https://elevate.com", "http://localhost:3000"],
+
     credentials: true,
   },
 });
