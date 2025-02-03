@@ -56,9 +56,11 @@ export const notificationGetMiddleware = async (c, next) => {
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
-    const { take } = await c.req.json();
+    const { take, skip, teamMemberId } = await c.req.json();
     const validatedData = socketGetNotificationSchema.safeParse({
         take,
+        skip,
+        teamMemberId,
     });
     if (!validatedData.success) {
         return sendErrorResponse("Invalid Request", 400);
@@ -77,8 +79,10 @@ export const notificationPutNotificationMiddleware = async (c, next) => {
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
+    const { take, teamMemberId } = await c.req.json();
     const validatedData = socketGetNotificationSchema.safeParse({
-        take: 10,
+        take,
+        teamMemberId,
     });
     if (!validatedData.success) {
         return sendErrorResponse("Invalid Request", 400);

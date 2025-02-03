@@ -1,8 +1,9 @@
 import prisma from "../../utils/prisma.js";
 
 export const notificationGetModel = async (params: {
-  teamMemberId: string;
   take: number;
+  skip?: number;
+  teamMemberId: string;
 }) => {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -14,6 +15,7 @@ export const notificationGetModel = async (params: {
         orderBy: {
           alliance_notification_date_created: "desc",
         },
+        skip: params.skip ? params.skip : 0,
       });
 
       const count = await tx.alliance_notification_table.count({

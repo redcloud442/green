@@ -271,6 +271,8 @@ export const socketJoinRoomSchema = z.object({
 });
 export const socketGetNotificationSchema = z.object({
     take: z.number().max(100).optional(),
+    skip: z.number().optional(),
+    teamMemberId: z.string().uuid(),
 });
 //email schema
 export const emailPostSchema = z.object({

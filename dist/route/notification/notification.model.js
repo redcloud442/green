@@ -10,6 +10,7 @@ export const notificationGetModel = async (params) => {
                 orderBy: {
                     alliance_notification_date_created: "desc",
                 },
+                skip: params.skip ? params.skip : 0,
             });
             const count = await tx.alliance_notification_table.count({
                 where: {

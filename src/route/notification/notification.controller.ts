@@ -45,12 +45,9 @@ export const notificationPutController = async (c: Context) => {
 
 export const notificationGetController = async (c: Context) => {
   try {
-    const teamMemberProfile = c.get("teamMemberProfile");
+    const params = c.get("params");
 
-    const notifications = await notificationGetModel({
-      teamMemberId: teamMemberProfile.alliance_member_id,
-      take: 10,
-    });
+    const notifications = await notificationGetModel(params);
 
     return c.json({
       message: "Notification fetched successfully",
@@ -63,11 +60,11 @@ export const notificationGetController = async (c: Context) => {
 
 export const notificatioPutController = async (c: Context) => {
   try {
-    const teamMemberProfile = c.get("teamMemberProfile");
+    const { take, teamMemberId } = c.get("params");
 
     const notifications = await updateNotificationModel({
-      teamMemberId: teamMemberProfile.alliance_member_id,
-      take: 10,
+      teamMemberId,
+      take,
     });
 
     return c.json({
