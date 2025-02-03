@@ -83,6 +83,7 @@ export const withdrawModel = async (params) => {
                 alliance_withdrawal_request_earnings_amount: olympusDeduction,
                 alliance_withdrawal_request_referral_amount: referralDeduction,
                 alliance_withdrawal_request_withdraw_type: earnings,
+                alliance_withdrawal_request_approved_by: countAllRequests[0]?.approverId ?? null,
             },
         });
         // Update the earnings
@@ -179,7 +180,7 @@ export const updateWithdrawModel = async (params) => {
         if (!existingRequest) {
             throw new Error("Request not found.");
         }
-        if (teamMemberProfile.alliance_member_id ===
+        if (teamMemberProfile.alliance_member_id !==
             existingRequest.alliance_withdrawal_request_approved_by &&
             teamMemberProfile.alliance_member_role === "ACCOUNTING") {
             throw new Error("You are not authorized to update this request.");

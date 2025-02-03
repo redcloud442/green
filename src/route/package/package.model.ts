@@ -476,6 +476,11 @@ export const packageListGetModel = async (params: {
         totalTimeMs > 0 ? (elapsedTimeMs / totalTimeMs) * 100 : 100;
       percentage = Math.min(percentage, 100);
 
+      // Calculate current amount
+      const initialAmount = row.package_member_amount;
+      const profitAmount = row.package_amount_earnings;
+      const currentAmount = initialAmount + (profitAmount * percentage) / 100;
+
       if (percentage === 100 && !row.package_member_is_ready_to_claim) {
         await prisma.package_member_connection_table.update({
           where: {
@@ -486,15 +491,15 @@ export const packageListGetModel = async (params: {
       }
 
       return {
-        amount: Number(row.package_member_amount.toFixed(2)),
         package: row.package_table.package_name,
         package_color: row.package_table.package_color || "#FFFFFF",
+        completion_date: completionDate?.toISOString(),
+        amount: Number(row.package_member_amount.toFixed(2)),
+        completion: Number(percentage.toFixed(2)),
         package_date_created: row.package_member_connection_created,
         package_connection_id: row.package_member_connection_id,
         profit_amount: Number(row.package_amount_earnings.toFixed(2)),
-        package_image: row.package_table.package_image,
-        completion_date: completionDate?.toISOString(),
-        completion: Number(percentage.toFixed(2)),
+        current_amount: Number(currentAmount.toFixed(2)),
         is_ready_to_claim: percentage === 100,
       };
     })

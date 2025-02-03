@@ -2,8 +2,6 @@ import { createServerClient, parseCookieHeader } from "@supabase/ssr";
 import type { Context, MiddlewareHandler } from "hono";
 import { env } from "hono/adapter";
 import { setCookie } from "hono/cookie";
-import type { Socket } from "socket.io";
-import { envConfig } from "../env.js";
 
 export const getSupabase = (c: Context) => {
   return c.get("supabase");
@@ -45,27 +43,4 @@ export const supabaseMiddleware = (): MiddlewareHandler => {
 
     await next();
   };
-};
-
-export const initializeSupabaseForSocket = (socket: Socket) => {
-  const supabaseUrl = envConfig.SUPABASE_URL;
-  const supabaseAnonKey = envConfig.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl) {
-    throw new Error("SUPABASE_URL missing!");
-  }
-
-  if (!supabaseAnonKey) {
-    throw new Error("SUPABASE_ANON_KEY missing!");
-  }
-
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return parseCookieHeader(socket.handshake.headers.cookie ?? "");
-      },
-    },
-  });
-
-  return supabase;
 };
