@@ -1,4 +1,3 @@
-import { io } from "../../index.js";
 import type { UserRequestdata } from "../../utils/types.js";
 
 import {
@@ -162,10 +161,6 @@ export const userModelPost = async (params: { memberId: string }) => {
           alliance_notification_user_id: memberId,
           alliance_notification_message: `You have been promoted to ${applicableRank}!`,
         },
-      });
-
-      io.to(`room-${memberId}`).emit("update-notification", {
-        message: `You have been promoted to ${applicableRank}!`,
       });
     }
 

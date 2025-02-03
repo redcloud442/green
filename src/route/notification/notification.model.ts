@@ -2,7 +2,6 @@ import prisma from "../../utils/prisma.js";
 
 export const notificationGetModel = async (params: {
   teamMemberId: string;
-
   take: number;
 }) => {
   try {
@@ -38,7 +37,6 @@ export const updateNotificationModel = async (params: {
   take: number;
 }) => {
   try {
-    // Fetch unread notifications first
     await prisma.$transaction(async (tx) => {
       await tx.alliance_notification_table.updateMany({
         where: {

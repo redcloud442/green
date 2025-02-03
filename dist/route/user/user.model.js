@@ -1,4 +1,3 @@
-import { io } from "../../index.js";
 import { Prisma, } from "@prisma/client";
 import bcryptjs from "bcryptjs";
 import prisma from "../../utils/prisma.js";
@@ -125,9 +124,6 @@ export const userModelPost = async (params) => {
                     alliance_notification_user_id: memberId,
                     alliance_notification_message: `You have been promoted to ${applicableRank}!`,
                 },
-            });
-            io.to(`room-${memberId}`).emit("update-notification", {
-                message: `You have been promoted to ${applicableRank}!`,
             });
         }
         if (currentIncomeTag !== applicableIncomeTag && applicableIncomeTag) {

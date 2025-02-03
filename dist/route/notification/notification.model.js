@@ -27,7 +27,6 @@ export const notificationGetModel = async (params) => {
 };
 export const updateNotificationModel = async (params) => {
     try {
-        // Fetch unread notifications first
         await prisma.$transaction(async (tx) => {
             await tx.alliance_notification_table.updateMany({
                 where: {

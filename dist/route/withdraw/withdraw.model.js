@@ -1,8 +1,6 @@
 import { Prisma } from "@prisma/client";
-import { io } from "../../index.js";
 import { calculateFee, calculateFinalAmount } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
-import { notificationGetModel } from "../notification/notification.model.js";
 export const withdrawModel = async (params) => {
     const { earnings, accountNumber, accountName, amount, bank, teamMemberProfile, } = params;
     const today = new Date().toISOString().slice(0, 10);
@@ -234,14 +232,6 @@ export const updateWithdrawModel = async (params) => {
             },
         });
         return updatedRequest;
-    });
-    const { notifications, count } = await notificationGetModel({
-        teamMemberId: result.alliance_withdrawal_request_member_id,
-        take: 10,
-    });
-    io.to(`room-${result.alliance_withdrawal_request_member_id}`).emit("notification-update", {
-        notifications: notifications || [],
-        count: count || 0,
     });
     return result;
 };

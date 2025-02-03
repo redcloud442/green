@@ -3,10 +3,8 @@ import type {
   WithdrawReturnDataType,
 } from "@/utils/types.js";
 import { Prisma, type alliance_member_table } from "@prisma/client";
-import { io } from "../../index.js";
 import { calculateFee, calculateFinalAmount } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
-import { notificationGetModel } from "../notification/notification.model.js";
 
 export const withdrawModel = async (params: {
   earnings: string;
@@ -352,18 +350,6 @@ export const updateWithdrawModel = async (params: {
     return updatedRequest;
   });
 
-  const { notifications, count } = await notificationGetModel({
-    teamMemberId: result.alliance_withdrawal_request_member_id,
-    take: 10,
-  });
-
-  io.to(`room-${result.alliance_withdrawal_request_member_id}`).emit(
-    "notification-update",
-    {
-      notifications: notifications || [],
-      count: count || 0,
-    }
-  );
   return result;
 };
 

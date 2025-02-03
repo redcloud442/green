@@ -330,7 +330,6 @@ export const socketJoinRoomSchema = z.object({
 });
 
 export const socketGetNotificationSchema = z.object({
-  teamMemberId: z.string().uuid(),
   take: z.number().max(100).optional(),
 });
 
