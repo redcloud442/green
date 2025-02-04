@@ -215,6 +215,8 @@ export const registerUserModel = async (params: {
         },
       });
 
+      await handleReferral(tx, referalLink, allianceMember.alliance_member_id);
+
       return {
         success: true,
         user,
