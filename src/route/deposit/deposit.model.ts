@@ -26,10 +26,6 @@ export const depositPostModel = async (params: {
     throw new Error("Invalid account name or number");
   }
 
-  if (!merchantData) {
-    throw new Error("Invalid account name or number");
-  }
-
   await prisma.$transaction(async (tx) => {
     const existingDeposit =
       await prisma.alliance_top_up_request_table.findFirst({
