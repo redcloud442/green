@@ -519,6 +519,7 @@ export const userListModel = async (
     user_first_name: entry.user_table.user_first_name || "",
     user_last_name: entry.user_table.user_last_name || "",
     user_date_created: entry.user_table.user_date_created.toISOString(),
+    user_profile_picture: entry.user_table.user_profile_picture || "",
   }));
 
   return {
