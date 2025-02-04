@@ -58,7 +58,7 @@ export const depositSchema = z.object({
   topUpMode: z.string().min(1, "Top up mode is required"),
   accountName: z.string().min(1, "Field is required"),
   accountNumber: z.string().min(1, "Field is required"),
-  receipt: z.string().min(1, "Receipt is required").max(5),
+  receipt: z.string().min(5, "Receipt is required").max(5),
   publicUrl: z.string().min(1, "Receipt is required"),
 });
 
