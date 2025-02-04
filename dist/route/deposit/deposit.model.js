@@ -2,11 +2,10 @@ import { Prisma } from "@prisma/client";
 import {} from "../../schema/schema.js";
 import prisma from "../../utils/prisma.js";
 export const depositPostModel = async (params) => {
-    const { amount, accountName, accountNumber, receipt, publicUrl } = params.TopUpFormValues;
+    const { amount, accountName, accountNumber, receipt, publicUrl, topUpMode } = params.TopUpFormValues;
     const merchantData = await prisma.merchant_table.findFirst({
         where: {
-            merchant_account_name: accountName,
-            merchant_account_number: accountNumber,
+            merchant_id: topUpMode,
         },
         select: {
             merchant_account_name: true,
@@ -14,9 +13,6 @@ export const depositPostModel = async (params) => {
             merchant_account_type: true,
         },
     });
-    if (!merchantData) {
-        throw new Error("Invalid account name or number");
-    }
     if (!merchantData) {
         throw new Error("Invalid account name or number");
     }

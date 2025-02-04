@@ -2,8 +2,10 @@ import type { Context, Next } from "hono";
 import {
   updateWithdrawSchema,
   withdrawHistoryPostSchema,
+  withdrawHistoryReportPostSchema,
   withdrawListPostSchema,
   withdrawPostSchema,
+  withdrawTotalReportPostSchema,
 } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
@@ -234,6 +236,94 @@ export const withdrawGetMiddleware = async (c: Context, next: Next) => {
   }
 
   c.set("teamMemberProfile", teamMemberProfile);
+
+  await next();
+};
+
+export const withdrawHistoryReportPostMiddleware = async (
+  c: Context,
+  next: Next
+) => {
+  const user = c.get("user");
+
+  const response = await protectionAccountingAdmin(user.id, prisma);
+
+  if (response instanceof Response) {
+    return response;
+  }
+
+  const { teamMemberProfile } = response;
+
+  if (!teamMemberProfile) {
+    return sendErrorResponse("Unauthorized", 401);
+  }
+
+  const isAllowed = await rateLimit(
+    `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-history-report-post`,
+    100,
+    60
+  );
+
+  if (!isAllowed) {
+    return sendErrorResponse("Too Many Requests", 429);
+  }
+
+  const { dateFilter } = await c.req.json();
+
+  const validate = withdrawHistoryReportPostSchema.safeParse(dateFilter);
+
+  if (!validate.success) {
+    return sendErrorResponse(validate.error.message, 400);
+  }
+
+  c.set("teamMemberProfile", teamMemberProfile);
+  c.set("params", validate.data);
+
+  await next();
+};
+
+export const withdrawTotalReportPostMiddleware = async (
+  c: Context,
+  next: Next
+) => {
+  const user = c.get("user");
+
+  const response = await protectionAccountingAdmin(user.id, prisma);
+
+  if (response instanceof Response) {
+    return response;
+  }
+
+  const { teamMemberProfile } = response;
+
+  if (!teamMemberProfile) {
+    return sendErrorResponse("Unauthorized", 401);
+  }
+
+  const isAllowed = await rateLimit(
+    `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-history-report-post`,
+    100,
+    60
+  );
+
+  if (!isAllowed) {
+    return sendErrorResponse("Too Many Requests", 429);
+  }
+
+  const { type, take, skip } = await c.req.json();
+
+  const validate = withdrawTotalReportPostSchema.safeParse({
+    type,
+    take,
+    skip,
+  });
+
+  if (!validate.success) {
+    return sendErrorResponse(validate.error.message, 400);
+  }
+
+  c.set("teamMemberProfile", teamMemberProfile);
+  c.set("params", validate.data);
 
   await next();
 };

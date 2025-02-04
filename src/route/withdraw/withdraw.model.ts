@@ -556,3 +556,151 @@ export const withdrawGetModel = async (
 
   return data;
 };
+
+export const withdrawHistoryReportPostModel = async (params: {
+  dateFilter: {
+    startDate: string;
+    endDate: string;
+  };
+}) => {
+  const { dateFilter } = params;
+
+  const { startDate, endDate } = dateFilter;
+
+  const withdrawalData =
+    await prisma.alliance_withdrawal_request_table.aggregate({
+      where: {
+        alliance_withdrawal_request_date: {
+          gte: startDate
+            ? new Date(new Date(startDate).setHours(0, 0, 0, 0))
+            : undefined, // Start of day in UTC
+          lte: endDate
+            ? new Date(new Date(endDate).setHours(23, 59, 59, 999))
+            : undefined, // End of day in UTC
+        },
+        alliance_withdrawal_request_status: "APPROVED",
+      },
+      _count: true,
+      _sum: {
+        alliance_withdrawal_request_amount: true,
+        alliance_withdrawal_request_fee: true,
+      },
+    });
+
+  const returnData = {
+    total_request: withdrawalData._count,
+    total_amount:
+      (withdrawalData._sum.alliance_withdrawal_request_amount || 0) -
+      (withdrawalData._sum.alliance_withdrawal_request_fee || 0),
+  };
+
+  return returnData;
+};
+
+export const withdrawHistoryReportPostTotalModel = async (params: {
+  take: number;
+  skip: number;
+  type: string;
+}) => {
+  const { take, skip, type } = params;
+  const intervals = [];
+
+  let currentEnd = new Date();
+  switch (type) {
+    case "DAILY":
+      currentEnd.setDate(currentEnd.getDate() - skip);
+      break;
+    case "WEEKLY":
+      currentEnd.setDate(currentEnd.getDate() - 7 * skip);
+      break;
+    case "MONTHLY":
+      currentEnd.setMonth(currentEnd.getMonth() - skip);
+      break;
+    default:
+      throw new Error("Invalid type provided");
+  }
+
+  // Step 2: Calculate intervals for the current batch (no overlapping)
+  for (let i = 0; i < take; i++) {
+    const currentStart = new Date(currentEnd);
+
+    switch (type) {
+      case "DAILY":
+        currentStart.setDate(currentEnd.getDate() - 1);
+        break;
+      case "WEEKLY":
+        currentStart.setDate(currentEnd.getDate() - 7);
+        break;
+      case "MONTHLY":
+        currentStart.setMonth(currentEnd.getMonth() - 1);
+        break;
+    }
+
+    intervals.push({
+      start: new Date(currentStart.setHours(0, 0, 0, 0)).toISOString(), // Start of day
+      end: new Date(currentEnd.setHours(23, 59, 59, 999)).toISOString(), // End of day
+    });
+
+    currentEnd = new Date(currentStart);
+  }
+
+  const aggregatedResults = [];
+
+  // Step 3: Execute queries for each interval
+  for (const interval of intervals) {
+    const reportData: {
+      interval_start: Date;
+      interval_end: Date;
+      total_accounting_approvals: number;
+      total_admin_approvals: number;
+      total_admin_approved_amount: number;
+      total_accounting_approved_amount: number;
+      total_net_approved_amount: number;
+    }[] = await prisma.$queryRaw`
+    WITH approval_summary AS (
+      SELECT 
+        t.alliance_withdrawal_request_id,
+        CASE 
+          WHEN mr.alliance_member_role = 'ADMIN' THEN 'ADMIN'
+          WHEN mt.alliance_member_role = 'ACCOUNTING' THEN 'ACCOUNTING'
+        END AS approver_role,
+        t.alliance_withdrawal_request_amount - t.alliance_withdrawal_request_fee AS net_approved_amount
+      FROM alliance_schema.alliance_withdrawal_request_table t
+      LEFT JOIN alliance_schema.alliance_member_table mt 
+        ON mt.alliance_member_id = t.alliance_withdrawal_request_approved_by
+        AND mt.alliance_member_role = 'ACCOUNTING'
+      LEFT JOIN alliance_schema.alliance_member_table mr 
+        ON mr.alliance_member_id = t.alliance_withdrawal_request_approved_by
+        AND mr.alliance_member_role = 'ADMIN'
+      WHERE t.alliance_withdrawal_request_date_updated::timestamptz BETWEEN ${interval.start}::timestamptz AND ${interval.end}::timestamptz
+        AND t.alliance_withdrawal_request_status = 'APPROVED'
+    ),
+    role_aggregates AS (
+      SELECT 
+        approver_role,
+        COUNT(*) AS total_approvals,
+        SUM(net_approved_amount) AS total_approved_amount
+      FROM approval_summary
+      GROUP BY approver_role
+    )
+
+    SELECT 
+      ${interval.start}::timestamptz AS interval_start,
+      ${interval.end}::timestamptz AS interval_end,
+      COALESCE((SELECT total_approvals FROM role_aggregates WHERE approver_role = 'ACCOUNTING'), 0) AS total_accounting_approvals,
+      COALESCE((SELECT total_approvals FROM role_aggregates WHERE approver_role = 'ADMIN'), 0) AS total_admin_approvals,
+      COALESCE((SELECT total_approved_amount FROM role_aggregates WHERE approver_role = 'ADMIN'), 0) AS total_admin_approved_amount,
+      COALESCE((SELECT total_approved_amount FROM role_aggregates WHERE approver_role = 'ACCOUNTING'), 0) AS total_accounting_approved_amount,
+      (SELECT SUM(net_approved_amount) FROM approval_summary) AS total_net_approved_amount
+  `;
+
+    aggregatedResults.push(reportData[0]);
+  }
+
+  // Step 4: Convert bigints and return the result
+  return JSON.parse(
+    JSON.stringify(aggregatedResults, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+};

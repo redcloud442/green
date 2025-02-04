@@ -90,6 +90,7 @@ export const userSchemaPatch = z.object({
     memberId: z.string().uuid(),
     action: z.enum(["updateRole", "banUser"]),
     role: z.enum(["ADMIN", "MEMBER", "MERCHANT", "ACCOUNTING"]).optional(),
+    type: z.enum(["BAN", "UNBAN"]).optional(),
 });
 export const userProfileSchemaPatch = z.object({
     profilePicture: z.string().min(1),
@@ -241,6 +242,19 @@ export const withdrawListPostSchema = z.object({
         end: z.string().optional(),
     })
         .optional(),
+});
+export const withdrawHistoryReportPostSchema = z.object({
+    dateFilter: z
+        .object({
+        start: z.string().optional(),
+        end: z.string().optional(),
+    })
+        .optional(),
+});
+export const withdrawTotalReportPostSchema = z.object({
+    type: z.enum(["DAILY", "WEEKLY", "MONTHLY"]),
+    take: z.number().optional(),
+    skip: z.number().optional(),
 });
 //dashboard schema
 export const dashboardPostSchema = z.object({

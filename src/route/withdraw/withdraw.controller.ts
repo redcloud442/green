@@ -4,6 +4,8 @@ import {
   updateWithdrawModel,
   withdrawGetModel,
   withdrawHistoryModel,
+  withdrawHistoryReportPostModel,
+  withdrawHistoryReportPostTotalModel,
   withdrawListPostModel,
   withdrawModel,
 } from "./withdraw.model.js";
@@ -82,6 +84,31 @@ export const withdrawGetController = async (c: Context) => {
     const teamMemberProfile = c.get("teamMemberProfile");
 
     const data = await withdrawGetModel(teamMemberProfile);
+
+    return c.json(data, 200);
+  } catch (e) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const withdrawHistoryReportPostController = async (c: Context) => {
+  try {
+    const { dateFilter } = await c.req.json();
+
+    const data = await withdrawHistoryReportPostModel({ dateFilter });
+
+    return c.json(data, 200);
+  } catch (e) {
+    console.log(e);
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const withdrawTotalReportPostController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    const data = await withdrawHistoryReportPostTotalModel(params);
 
     return c.json(data, 200);
   } catch (e) {

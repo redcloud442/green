@@ -145,6 +145,12 @@ export const registerUserModel = async (params) => {
                     alliance_referral_link_member_id: allianceMember.alliance_member_id,
                 },
             });
+            await tx.alliance_notification_table.create({
+                data: {
+                    alliance_notification_user_id: allianceMember.alliance_member_id,
+                    alliance_notification_message: `Welcome to Elevate and Congratulations on your free account!`,
+                },
+            });
             await handleReferral(tx, referalLink, allianceMember.alliance_member_id);
             return {
                 success: true,

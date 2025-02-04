@@ -77,8 +77,13 @@ export const userPatchMiddleware = async (c, next) => {
         return sendErrorResponse("Too Many Requests", 429);
     }
     const { id } = c.req.param();
-    const { action = "updateRole", role } = await c.req.json();
-    const validate = userSchemaPatch.safeParse({ memberId: id, action, role });
+    const { action = "updateRole", role, type } = await c.req.json();
+    const validate = userSchemaPatch.safeParse({
+        memberId: id,
+        action,
+        role,
+        type,
+    });
     if (!validate.success) {
         return sendErrorResponse("Invalid Request", 400);
     }
