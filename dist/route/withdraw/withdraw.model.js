@@ -64,8 +64,8 @@ export const withdrawModel = async (params) => {
     if (remainingAmount > 0) {
         throw new Error("Invalid request.");
     }
-    const finalAmount = calculateFinalAmount(Number(amount), "TOTAL");
-    const fee = calculateFee(Number(amount), "TOTAL");
+    const finalAmount = calculateFinalAmount(Number(amount), earnings);
+    const fee = calculateFee(Number(amount), earnings);
     await prisma.$transaction(async (tx) => {
         const countAllRequests = await tx.$queryRaw `
       SELECT am.alliance_member_id AS "approverId",
@@ -115,7 +115,7 @@ export const withdrawModel = async (params) => {
             // Log the transaction
             await prisma.alliance_transaction_table.create({
                 data: {
-                    transaction_amount: calculateFinalAmount(Number(amount), "TOTAL"),
+                    transaction_amount: calculateFinalAmount(Number(amount), earnings),
                     transaction_description: "Withdrawal Ongoing",
                     transaction_member_id: teamMemberProfile.alliance_member_id,
                 },
@@ -206,16 +206,16 @@ export const updateWithdrawModel = async (params) => {
             },
         });
         if (status === "REJECTED") {
+            const earningsType = updatedRequest.alliance_withdrawal_request_withdraw_type === "PACKAGE"
+                ? "alliance_olympus_earnings"
+                : "alliance_referral_bounty";
             await tx.alliance_earnings_table.update({
                 where: {
                     alliance_earnings_member_id: updatedRequest.alliance_withdrawal_request_member_id,
                 },
                 data: {
-                    alliance_referral_bounty: {
-                        increment: updatedRequest.alliance_withdrawal_request_referral_amount,
-                    },
-                    alliance_olympus_earnings: {
-                        increment: updatedRequest.alliance_withdrawal_request_earnings_amount,
+                    [earningsType]: {
+                        increment: updatedRequest.alliance_withdrawal_request_amount,
                     },
                     alliance_combined_earnings: {
                         increment: updatedRequest.alliance_withdrawal_request_amount,

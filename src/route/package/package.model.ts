@@ -567,7 +567,7 @@ function generateReferralChain(
     .reverse()
     .slice(0, maxDepth)
     .map((referrerId, index) => ({
-      referrerId,
+      referrerId: referrerId.trim().replace(/[\r\n]+/g, ""),
       percentage: getBonusPercentage(index + 1),
       level: index + 1,
     }));

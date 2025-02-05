@@ -18,7 +18,7 @@ auth.get("/", authGetMiddleware, loginGetController);
 
 auth.post("/", authMiddleware, loginController);
 
-auth.post("/securedPrime", authMiddleware, adminController);
+auth.post("/loginSecured", authMiddleware, adminController);
 
 auth.post(
   "/register",

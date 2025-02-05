@@ -32,7 +32,11 @@ export const registerUserSchema = z.object({
         .transform((val) => (val?.trim() === "" ? null : val))
         .refine((val) => val === null || z.string().email().safeParse(val).success, "Invalid email address"),
     userId: z.string().uuid(),
-    userName: z.string().min(6),
+    userName: z
+        .string()
+        .min(6, "Username must be at least 6 characters long")
+        .max(20, "Username must be at most 50 characters long")
+        .regex(/^[a-zA-Z][a-zA-Z0-9._]*$/, "Username must start with a letter and can only contain letters, numbers, dots, and underscores"),
     password: z.string().min(6),
     firstName: z.string().min(2),
     lastName: z.string().min(2),
@@ -160,6 +164,12 @@ export const transactionSchemaPost = z.object({
     page: z.number().min(1),
 });
 //referral schema
+export const referralPostSchema = z.object({
+    teamMemberId: z.string().uuid(),
+    page: z.number().min(1),
+    limit: z.number().min(1).max(10),
+    search: z.string().optional(),
+});
 export const directReferralsSchemaPost = z.object({
     page: z.number().min(1),
     limit: z.number().min(1).max(10),

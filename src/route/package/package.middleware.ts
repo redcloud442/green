@@ -30,7 +30,7 @@ export const packagePostMiddleware = async (c: Context, next: Next) => {
 
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:package-post`,
-    50,
+    100,
     60
   );
 

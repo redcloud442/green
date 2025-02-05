@@ -212,6 +212,13 @@ export const transactionSchemaPost = z.object({
 
 //referral schema
 
+export const referralPostSchema = z.object({
+  teamMemberId: z.string().uuid(),
+  page: z.number().min(1),
+  limit: z.number().min(1).max(10),
+  search: z.string().optional(),
+});
+
 export const directReferralsSchemaPost = z.object({
   page: z.number().min(1),
   limit: z.number().min(1).max(10),

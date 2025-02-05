@@ -215,3 +215,51 @@ export const referralTotalGetModel = async (params) => {
         };
     });
 };
+export const referralUserModelPost = async (params) => {
+    const { teamMemberId, page, limit, search } = params;
+    const cacheKey = `referral-user-${teamMemberId}-${page}-${limit}-${search}`;
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+        return cachedData;
+    }
+    const offset = Math.max((page - 1) * limit, 0);
+    const directReferrals = await prisma.alliance_referral_table.findMany({
+        where: {
+            alliance_referral_from_member_id: teamMemberId,
+        },
+        select: { alliance_referral_member_id: true },
+        take: limit,
+        skip: offset,
+        orderBy: {
+            alliance_referral_date: "desc",
+        },
+    });
+    const totalCount = await prisma.alliance_referral_table.count({
+        where: {
+            alliance_referral_from_member_id: teamMemberId,
+        },
+    });
+    const directReferralIds = directReferrals.map((ref) => ref.alliance_referral_member_id);
+    const teamMembers = await prisma.alliance_member_table.findMany({
+        where: { alliance_member_id: { in: directReferralIds } },
+        include: {
+            user_table: {
+                select: {
+                    user_username: true,
+                },
+            },
+        },
+    });
+    if (!teamMembers.length) {
+        return { success: false, message: "No users found" };
+    }
+    const formattedTeamMembers = teamMembers.map((member) => ({
+        user_username: member.user_table.user_username,
+    }));
+    const returnData = {
+        data: formattedTeamMembers,
+        totalCount: totalCount,
+    };
+    await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
+    return returnData;
+};
