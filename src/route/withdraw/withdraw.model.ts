@@ -605,7 +605,10 @@ export const withdrawHistoryReportPostTotalModel = async (params: {
   const { take, skip, type } = params;
   const intervals = [];
 
-  let currentEnd = new Date();
+  let currentEnd = new Date(); // Start with today at 11:59 PM
+  currentEnd.setHours(23, 59, 59, 999);
+
+  // Adjust the initial end date based on the skip count
   switch (type) {
     case "DAILY":
       currentEnd.setDate(currentEnd.getDate() - skip);
@@ -620,28 +623,51 @@ export const withdrawHistoryReportPostTotalModel = async (params: {
       throw new Error("Invalid type provided");
   }
 
-  // Step 2: Calculate intervals for the current batch (no overlapping)
+  // Step 2: Calculate intervals based on the type
   for (let i = 0; i < take; i++) {
-    const currentStart = new Date(currentEnd);
+    const intervalEnd = new Date(currentEnd);
+    let intervalStart = new Date(currentEnd);
 
     switch (type) {
       case "DAILY":
-        currentStart.setDate(currentEnd.getDate() - 1);
+        intervalStart.setDate(intervalEnd.getDate()); // Same day
+        intervalStart.setHours(0, 0, 0, 0); // 12:00 AM
         break;
       case "WEEKLY":
-        currentStart.setDate(currentEnd.getDate() - 7);
+        intervalStart.setDate(intervalEnd.getDate() - 6); // Start of the week
+        intervalStart.setHours(0, 0, 0, 0); // 12:00 AM
         break;
       case "MONTHLY":
-        currentStart.setMonth(currentEnd.getMonth() - 1);
+        intervalStart.setDate(1); // First day of the month
+        intervalStart.setHours(0, 0, 0, 0); // 12:00 AM
         break;
     }
 
     intervals.push({
-      start: new Date(currentStart.setHours(0, 0, 0, 0)).toISOString(), // Start of day
-      end: new Date(currentEnd.setHours(23, 59, 59, 999)).toISOString(), // End of day
+      start: intervalStart.toISOString(),
+      end: intervalEnd.toISOString(),
     });
 
-    currentEnd = new Date(currentStart);
+    // Move currentEnd to the previous interval
+    switch (type) {
+      case "DAILY":
+        currentEnd.setDate(currentEnd.getDate() - 1);
+        break;
+      case "WEEKLY":
+        currentEnd.setDate(currentEnd.getDate() - 7);
+        break;
+      case "MONTHLY":
+        currentEnd.setMonth(currentEnd.getMonth() - 1);
+        currentEnd.setDate(
+          new Date(
+            currentEnd.getFullYear(),
+            currentEnd.getMonth() + 1,
+            0
+          ).getDate()
+        ); // Last day of the month
+        break;
+    }
+    currentEnd.setHours(23, 59, 59, 999); // Set to 11:59 PM
   }
 
   const aggregatedResults = [];
