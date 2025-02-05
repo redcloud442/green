@@ -27,10 +27,10 @@ enum ReferralType {
 model user_table {
   user_id               String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   user_date_created     DateTime        @default(now()) @db.Timestamptz(3)
-  user_username         String?
-  user_first_name       String?
-  user_last_name        String?
-  user_email            String
+  user_username         String          @unique
+  user_first_name       String
+  user_last_name        String
+  user_email            String?
   user_password         String
   user_active_mobile    String?
   user_profile_picture  String?
@@ -194,7 +194,7 @@ model alliance_top_up_request_table {
   alliance_top_up_request_member_id    String    @db.Uuid
   alliance_top_up_request_approved_by  String?   @db.Uuid
   alliance_top_up_request_date_updated DateTime? @db.Timestamptz(3)
-  alliance_top_up_request_receipt      String @unique
+  alliance_top_up_request_receipt      String? @unique
 
   alliance_member_requestor           alliance_member_table @relation("Requestor", fields: [alliance_top_up_request_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
 

@@ -10,7 +10,7 @@ import {
 export const depositPostController = async (c: Context) => {
   const supabase = supabaseClient;
 
-  const { amount, topUpMode, accountName, accountNumber, receipt, publicUrl } =
+  const { amount, topUpMode, accountName, accountNumber, publicUrl } =
     c.get("params");
 
   try {
@@ -22,7 +22,7 @@ export const depositPostController = async (c: Context) => {
         topUpMode,
         accountName,
         accountNumber,
-        receipt,
+
         publicUrl,
       },
       teamMemberProfile: teamMemberProfile,

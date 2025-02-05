@@ -40,13 +40,12 @@ export const depositMiddleware = async (c: Context, next: Next) => {
 
   const { TopUpFormValues, publicUrl } = await c.req.json();
 
-  const { amount, topUpMode, accountName, accountNumber, receipt } =
+  const { amount, topUpMode, accountName, accountNumber } =
     TopUpFormValues as unknown as {
       amount: number;
       topUpMode: string;
       accountName: string;
       accountNumber: string;
-      receipt: string;
       publicUrl: string;
     };
 
@@ -55,7 +54,6 @@ export const depositMiddleware = async (c: Context, next: Next) => {
     topUpMode,
     accountName,
     accountNumber,
-    receipt,
     publicUrl,
   });
 
