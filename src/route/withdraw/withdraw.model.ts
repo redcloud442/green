@@ -113,8 +113,8 @@ export const withdrawModel = async (params: {
     throw new Error("Invalid request.");
   }
 
-  const finalAmount = calculateFinalAmount(Number(amount), "TOTAL");
-  const fee = calculateFee(Number(amount), "TOTAL");
+  const finalAmount = calculateFinalAmount(Number(amount), earnings);
+  const fee = calculateFee(Number(amount), earnings);
 
   await prisma.$transaction(async (tx) => {
     const countAllRequests: {
@@ -172,7 +172,7 @@ export const withdrawModel = async (params: {
       // Log the transaction
       await prisma.alliance_transaction_table.create({
         data: {
-          transaction_amount: calculateFinalAmount(Number(amount), "TOTAL"),
+          transaction_amount: calculateFinalAmount(Number(amount), earnings),
           transaction_description: "Withdrawal Ongoing",
           transaction_member_id: teamMemberProfile.alliance_member_id,
         },
