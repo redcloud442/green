@@ -21,8 +21,6 @@ export const dashboardPostModel = async (params: {
           .toISOString()
           .split("T")[0] + "T23:59:59Z";
 
-    console.log(startDate, endDate);
-
     const [
       totalEarnings,
       packageEarnings,
