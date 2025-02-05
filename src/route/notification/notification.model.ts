@@ -63,7 +63,6 @@ export const updateNotificationModel = async (params: {
 
     return notifications;
   } catch (error) {
-    console.error("Error updating notifications:", error);
     throw new Error("Failed to update notifications");
   }
 };

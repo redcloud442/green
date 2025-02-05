@@ -241,7 +241,15 @@ export const referralUserModelPost = async (params) => {
     });
     const directReferralIds = directReferrals.map((ref) => ref.alliance_referral_member_id);
     const teamMembers = await prisma.alliance_member_table.findMany({
-        where: { alliance_member_id: { in: directReferralIds } },
+        where: {
+            alliance_member_id: { in: directReferralIds },
+            user_table: {
+                user_username: {
+                    contains: search ? search : "",
+                    mode: "insensitive",
+                },
+            },
+        },
         include: {
             user_table: {
                 select: {

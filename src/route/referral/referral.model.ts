@@ -359,7 +359,16 @@ export const referralUserModelPost = async (params: {
   );
 
   const teamMembers = await prisma.alliance_member_table.findMany({
-    where: { alliance_member_id: { in: directReferralIds } },
+    where: {
+      alliance_member_id: { in: directReferralIds },
+      user_table: {
+        user_username: {
+          contains: search ? search : "",
+          mode: "insensitive",
+        },
+      },
+    },
+
     include: {
       user_table: {
         select: {
