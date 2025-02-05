@@ -310,19 +310,19 @@ export const updateWithdrawModel = async (params: {
     });
 
     if (status === "REJECTED") {
+      const earningsType =
+        updatedRequest.alliance_withdrawal_request_withdraw_type === "PACKAGE"
+          ? "alliance_olympus_earnings"
+          : "alliance_referral_bounty";
+
       await tx.alliance_earnings_table.update({
         where: {
           alliance_earnings_member_id:
             updatedRequest.alliance_withdrawal_request_member_id,
         },
         data: {
-          alliance_referral_bounty: {
-            increment:
-              updatedRequest.alliance_withdrawal_request_referral_amount,
-          },
-          alliance_olympus_earnings: {
-            increment:
-              updatedRequest.alliance_withdrawal_request_earnings_amount,
+          [earningsType]: {
+            increment: updatedRequest.alliance_withdrawal_request_amount,
           },
           alliance_combined_earnings: {
             increment: updatedRequest.alliance_withdrawal_request_amount,
