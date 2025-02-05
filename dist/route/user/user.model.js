@@ -407,6 +407,7 @@ export const userListModel = async (params, teamMemberProfile) => {
         user_first_name: entry.user_table.user_first_name || "",
         user_last_name: entry.user_table.user_last_name || "",
         user_date_created: entry.user_table.user_date_created.toISOString(),
+        user_profile_picture: entry.user_table.user_profile_picture || "",
     }));
     return {
         totalCount,
@@ -499,4 +500,23 @@ export const userPreferredBankModel = async (params, teamMemberProfile) => {
         return response;
     });
     return data;
+};
+export const userProfileDataPutModel = async (params) => {
+    const { value, type, userId } = params;
+    if (type === "activeMobile") {
+        await prisma.$transaction(async (tx) => {
+            await tx.user_table.update({
+                where: { user_id: userId },
+                data: { user_active_mobile: value },
+            });
+        });
+    }
+    if (type === "activeEmail") {
+        await prisma.$transaction(async (tx) => {
+            await tx.user_table.update({
+                where: { user_id: userId },
+                data: { user_email: value },
+            });
+        });
+    }
 };

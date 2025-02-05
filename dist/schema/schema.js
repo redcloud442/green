@@ -21,8 +21,16 @@ export const loginCheckSchema = z.object({
 });
 //register
 export const registerUserSchema = z.object({
-    activeMobile: z.string().min(11),
-    activeEmail: z.string().email(),
+    activeMobile: z
+        .string()
+        .optional()
+        .refine((val) => val === undefined || val === "" || /^0\d{10}$/.test(val), "Active Mobile must start with '0' and contain exactly 11 digits."),
+    activeEmail: z
+        .string()
+        .optional()
+        .nullable()
+        .transform((val) => (val?.trim() === "" ? null : val))
+        .refine((val) => val === null || z.string().email().safeParse(val).success, "Invalid email address"),
     userId: z.string().uuid(),
     userName: z.string().min(6),
     password: z.string().min(6),
@@ -44,7 +52,7 @@ export const depositSchema = z.object({
     topUpMode: z.string().min(1, "Top up mode is required"),
     accountName: z.string().min(1, "Field is required"),
     accountNumber: z.string().min(1, "Field is required"),
-    receipt: z.string().min(1, "Receipt is required").max(5),
+    receipt: z.string().min(5, "Receipt is required").max(5),
     publicUrl: z.string().min(1, "Receipt is required"),
 });
 export const updateDepositSchema = z.object({
@@ -127,6 +135,24 @@ export const userPreferredBankSchema = z.object({
     accountNumber: z.string().min(1),
     accountName: z.string().min(1),
     bankName: z.string().min(1),
+});
+export const userProfileDataSchema = z
+    .object({
+    value: z.string(),
+    type: z.enum(["activeMobile", "activeEmail"]),
+    userId: z.string().uuid(),
+})
+    .refine((data) => {
+    if (data.type === "activeMobile") {
+        return /^0\d{10}$/.test(data.value); // Validate mobile format
+    }
+    if (data.type === "activeEmail") {
+        return z.string().email().safeParse(data.value).success; // Validate email format
+    }
+    return false;
+}, {
+    message: "Invalid value for the selected type.",
+    path: ["value"], // Highlight the error on the value field
 });
 //transaction schema
 export const transactionSchemaPost = z.object({

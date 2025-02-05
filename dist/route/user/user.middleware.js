@@ -1,4 +1,4 @@
-import { userChangePasswordSchema, userGenerateLinkSchema, userListSchema, userPreferredBankSchema, userProfileSchemaPatch, userSchemaPatch, userSchemaPost, userSchemaPut, userSponsorSchema, } from "../../schema/schema.js";
+import { userChangePasswordSchema, userGenerateLinkSchema, userListSchema, userPreferredBankSchema, userProfileDataSchema, userProfileSchemaPatch, userSchemaPatch, userSchemaPost, userSchemaPut, userSponsorSchema, } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionAdmin, protectionMemberUser, } from "../../utils/protection.js";
@@ -277,6 +277,33 @@ export const userPreferredBankMiddleware = async (c, next) => {
         return sendErrorResponse("Invalid Request", 400);
     }
     c.set("teamMemberProfile", teamMemberProfile);
+    c.set("params", validate.data);
+    await next();
+};
+export const userProfileDataPutMiddleware = async (c, next) => {
+    const user = c.get("user");
+    const response = await protectionMemberUser(user.id, prisma);
+    if (response instanceof Response) {
+        return response;
+    }
+    const { teamMemberProfile } = response;
+    if (!teamMemberProfile) {
+        return sendErrorResponse("Unauthorized", 401);
+    }
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-profile-update`, 50, 60);
+    if (!isAllowed) {
+        return sendErrorResponse("Too Many Requests", 429);
+    }
+    const { id } = c.req.param();
+    const { type, value } = await c.req.json();
+    const validate = userProfileDataSchema.safeParse({
+        value,
+        type,
+        userId: id,
+    });
+    if (!validate.success) {
+        return sendErrorResponse("Invalid Request", 400);
+    }
     c.set("params", validate.data);
     await next();
 };

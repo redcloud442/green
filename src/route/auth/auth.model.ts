@@ -180,8 +180,8 @@ export const registerUserModel = async (params: {
           user_first_name: firstName,
           user_last_name: lastName,
           user_username: userName,
-          user_active_mobile: activeMobile,
-          user_email: activeEmail,
+          user_active_mobile: activeMobile || "",
+          user_email: activeEmail || "",
         },
       });
 

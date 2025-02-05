@@ -99,7 +99,6 @@ export const withdrawHistoryReportPostController = async (c: Context) => {
 
     return c.json(data, 200);
   } catch (e) {
-    console.log(e);
     return sendErrorResponse("Internal Server Error", 500);
   }
 };

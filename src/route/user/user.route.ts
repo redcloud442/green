@@ -8,6 +8,7 @@ import {
   userPatchController,
   userPostController,
   userPreferredBankController,
+  userProfileDataPutController,
   userProfilePutController,
   userPutController,
   userSponsorController,
@@ -21,6 +22,7 @@ import {
   userPatchMiddleware,
   userPostMiddleware,
   userPreferredBankMiddleware,
+  userProfileDataPutMiddleware,
   userProfilePutMiddleware,
   userPutMiddleware,
   userSponsorMiddleware,
@@ -37,6 +39,12 @@ user.get("/", userGetMiddleware, userGetController);
 user.patch("/:id", userPatchMiddleware, userPatchController);
 
 user.put("/:id", userProfilePutMiddleware, userProfilePutController);
+
+user.put(
+  "/:id/update-profile",
+  userProfileDataPutMiddleware,
+  userProfileDataPutController
+);
 
 user.put(
   "/:id/change-password",

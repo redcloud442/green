@@ -9,6 +9,7 @@ import {
   userModelPut,
   userPatchModel,
   userPreferredBankModel,
+  userProfileDataPutModel,
   userProfileModelPut,
   userSponsorModel,
 } from "./user.model.js";
@@ -147,6 +148,18 @@ export const userPreferredBankController = async (c: Context) => {
     const data = await userPreferredBankModel(params, teamMemberProfile);
 
     return c.json(data, 200);
+  } catch (error) {
+    return c.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+};
+
+export const userProfileDataPutController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    await userProfileDataPutModel(params);
+
+    return c.json({ message: "Profile Data Updated" }, 200);
   } catch (error) {
     return c.json({ error: "Internal Server Error" }, { status: 500 });
   }

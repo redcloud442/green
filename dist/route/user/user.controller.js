@@ -1,4 +1,4 @@
-import { userActiveListModel, userChangePasswordModel, userGenerateLinkModel, userListModel, userModelGet, userModelPost, userModelPut, userPatchModel, userPreferredBankModel, userProfileModelPut, userSponsorModel, } from "./user.model.js";
+import { userActiveListModel, userChangePasswordModel, userGenerateLinkModel, userListModel, userModelGet, userModelPost, userModelPut, userPatchModel, userPreferredBankModel, userProfileDataPutModel, userProfileModelPut, userSponsorModel, } from "./user.model.js";
 export const userPutController = async (c) => {
     try {
         const { email, password, userId } = await c.req.json();
@@ -110,6 +110,16 @@ export const userPreferredBankController = async (c) => {
         const teamMemberProfile = c.get("teamMemberProfile");
         const data = await userPreferredBankModel(params, teamMemberProfile);
         return c.json(data, 200);
+    }
+    catch (error) {
+        return c.json({ error: "Internal Server Error" }, { status: 500 });
+    }
+};
+export const userProfileDataPutController = async (c) => {
+    try {
+        const params = c.get("params");
+        await userProfileDataPutModel(params);
+        return c.json({ message: "Profile Data Updated" }, 200);
     }
     catch (error) {
         return c.json({ error: "Internal Server Error" }, { status: 500 });

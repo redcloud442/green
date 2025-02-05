@@ -649,3 +649,29 @@ export const userPreferredBankModel = async (
 
   return data;
 };
+
+export const userProfileDataPutModel = async (params: {
+  value: string;
+  type: string;
+  userId: string;
+}) => {
+  const { value, type, userId } = params;
+
+  if (type === "activeMobile") {
+    await prisma.$transaction(async (tx) => {
+      await tx.user_table.update({
+        where: { user_id: userId },
+        data: { user_active_mobile: value },
+      });
+    });
+  }
+
+  if (type === "activeEmail") {
+    await prisma.$transaction(async (tx) => {
+      await tx.user_table.update({
+        where: { user_id: userId },
+        data: { user_email: value },
+      });
+    });
+  }
+};
