@@ -22,7 +22,6 @@ export const depositPostController = async (c: Context) => {
         topUpMode,
         accountName,
         accountNumber,
-
         publicUrl,
       },
       teamMemberProfile: teamMemberProfile,

@@ -345,6 +345,7 @@ export const userPatchModel = async (params: {
 
 export const userSponsorModel = async (params: { userId: string }) => {
   const { userId } = params;
+  
 
   const user: { user_username: string }[] = await prisma.$queryRaw`
   SELECT 
