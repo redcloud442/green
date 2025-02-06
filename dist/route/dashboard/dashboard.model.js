@@ -3,28 +3,14 @@ const prisma = new PrismaClient();
 export const dashboardPostModel = async (params) => {
     return await prisma.$transaction(async (tx) => {
         const { dateFilter } = params;
+        // Define default dates using PostgreSQL-friendly format
         const startDate = dateFilter.start
-            ? new Date(dateFilter.start)
-            : (() => {
-                const today = new Date();
-                today.setDate(today.getDate());
-                today.setUTCHours(0, 0, 0, 0);
-                return today;
-            })();
+            ? new Date(dateFilter.start).toISOString().split("T")[0] + "T00:00:00Z"
+            : new Date(new Date()).toISOString().split("T")[0] + "T00:00:00Z";
         const endDate = dateFilter.end
-            ? (() => {
-                const end = new Date(dateFilter.end);
-                end.setUTCFullYear(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
-                end.setUTCHours(23, 59, 59, 999);
-                return end;
-            })()
-            : (() => {
-                const end = new Date();
-                end.setDate(end.getDate());
-                end.setUTCHours(23, 59, 59, 999);
-                return end;
-            })();
-        const [totalEarnings, packageEarnings, totalActivatedUserByDate, totalApprovedWithdrawal, totalWithdraw, bountyEarnings, activePackageWithinTheDay, chartDataRaw,] = await Promise.all([
+            ? new Date(dateFilter.end).toISOString().split("T")[0] + "T23:59:59Z"
+            : new Date(new Date()).toISOString().split("T")[0] + "T23:59:59Z";
+        const [totalEarnings, packageEarnings, totalActivatedUserByDate, totalApprovedWithdrawal, totalApprovedReceipts, totalWithdraw, bountyEarnings, activePackageWithinTheDay, chartDataRaw,] = await Promise.all([
             tx.alliance_top_up_request_table.aggregate({
                 _sum: { alliance_top_up_request_amount: true },
                 where: {
@@ -38,19 +24,34 @@ export const dashboardPostModel = async (params) => {
             tx.package_member_connection_table.aggregate({
                 _sum: { package_member_amount: true, package_amount_earnings: true },
                 where: {
-                    package_member_connection_created: { gte: startDate, lte: endDate },
+                    package_member_connection_created: {
+                        gte: startDate,
+                        lte: endDate,
+                    },
                 },
             }),
             tx.alliance_member_table.count({
                 where: {
                     alliance_member_is_active: true,
-                    alliance_member_date_updated: { gte: startDate, lte: endDate },
+                    alliance_member_date_updated: {
+                        gte: startDate,
+                        lte: endDate,
+                    },
                 },
             }),
             tx.alliance_withdrawal_request_table.count({
                 where: {
                     alliance_withdrawal_request_status: "APPROVED",
                     alliance_withdrawal_request_date_updated: {
+                        gte: startDate,
+                        lte: endDate,
+                    },
+                },
+            }),
+            tx.alliance_top_up_request_table.count({
+                where: {
+                    alliance_top_up_request_status: "APPROVED",
+                    alliance_top_up_request_date_updated: {
                         gte: startDate,
                         lte: endDate,
                     },
@@ -78,7 +79,10 @@ export const dashboardPostModel = async (params) => {
             }),
             tx.package_member_connection_table.count({
                 where: {
-                    package_member_connection_created: { gte: startDate, lte: endDate },
+                    package_member_connection_created: {
+                        gte: startDate,
+                        lte: endDate,
+                    },
                 },
             }),
             tx.$queryRaw `
@@ -86,19 +90,17 @@ export const dashboardPostModel = async (params) => {
           SELECT DATE_TRUNC('day', alliance_top_up_request_date_updated) AS date,
                  SUM(COALESCE(alliance_top_up_request_amount, 0)) AS earnings
           FROM alliance_schema.alliance_top_up_request_table
-          WHERE alliance_top_up_request_date_updated::date BETWEEN ${startDate} AND ${endDate}
+          WHERE alliance_top_up_request_date_updated BETWEEN ${startDate}::timestamptz AND ${endDate}::timestamptz
           AND alliance_top_up_request_status = 'APPROVED'
-
           GROUP BY DATE_TRUNC('day', alliance_top_up_request_date_updated)
         ),
         daily_withdraw AS (
           SELECT DATE_TRUNC('day', alliance_withdrawal_request_date_updated) AS date,
                  SUM(COALESCE(alliance_withdrawal_request_amount, 0) - COALESCE(alliance_withdrawal_request_fee, 0)) AS withdraw
           FROM alliance_schema.alliance_withdrawal_request_table
-          WHERE alliance_withdrawal_request_date_updated::date BETWEEN ${startDate} AND ${endDate}
-                AND alliance_withdrawal_request_status = 'APPROVED'
+          WHERE alliance_withdrawal_request_date_updated BETWEEN ${startDate}::timestamptz AND ${endDate}::timestamptz
+          AND alliance_withdrawal_request_status = 'APPROVED'
           GROUP BY DATE_TRUNC('day', alliance_withdrawal_request_date_updated)
-
         )
         SELECT COALESCE(e.date, w.date) AS date,
                COALESCE(e.earnings, 0) AS earnings,
@@ -113,7 +115,7 @@ export const dashboardPostModel = async (params) => {
         const indirectLoot = bountyEarnings.find((e) => e.package_ally_bounty_type === "INDIRECT")
             ?._sum.package_ally_bounty_earnings || 0;
         const chartData = chartDataRaw.map((row) => ({
-            date: new Date(row.date).toISOString().split("T")[0],
+            date: row.date.toISOString().split("T")[0],
             earnings: row.earnings || 0,
             withdraw: row.withdraw || 0,
         }));
@@ -125,6 +127,7 @@ export const dashboardPostModel = async (params) => {
             packageEarnings: (packageEarnings._sum.package_member_amount || 0) +
                 (packageEarnings._sum.package_amount_earnings || 0),
             totalApprovedWithdrawal,
+            totalApprovedReceipts,
             totalActivatedUserByDate,
             activePackageWithinTheDay,
             chartData,

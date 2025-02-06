@@ -38,7 +38,7 @@ export const depositMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Too Many Requests", 429);
   }
 
-  const { TopUpFormValues, publicUrl } = await c.req.json();
+  const { TopUpFormValues, publicUrls } = await c.req.json();
 
   const { amount, topUpMode, accountName, accountNumber } =
     TopUpFormValues as unknown as {
@@ -46,7 +46,7 @@ export const depositMiddleware = async (c: Context, next: Next) => {
       topUpMode: string;
       accountName: string;
       accountNumber: string;
-      publicUrl: string;
+      publicUrls: string[];
     };
 
   const sanitizedData = depositSchema.safeParse({
@@ -54,7 +54,7 @@ export const depositMiddleware = async (c: Context, next: Next) => {
     topUpMode,
     accountName,
     accountNumber,
-    publicUrl,
+    publicUrls,
   });
 
   if (!sanitizedData.success) {

@@ -4,10 +4,10 @@ import { type DepositFormValues } from "../../schema/schema.js";
 import prisma from "../../utils/prisma.js";
 
 export const depositPostModel = async (params: {
-  TopUpFormValues: DepositFormValues & { publicUrl: string };
+  TopUpFormValues: DepositFormValues & { publicUrls: string[] };
   teamMemberProfile: alliance_member_table;
 }) => {
-  const { amount, accountName, accountNumber, publicUrl, topUpMode } =
+  const { amount, accountName, accountNumber, publicUrls, topUpMode } =
     params.TopUpFormValues;
 
   const merchantData = await prisma.merchant_table.findFirst({
@@ -46,17 +46,27 @@ export const depositPostModel = async (params: {
       throw new Error("Invalid request");
     }
 
-    await tx.alliance_top_up_request_table.create({
+    const newDeposit = await tx.alliance_top_up_request_table.create({
       data: {
         alliance_top_up_request_amount: Number(amount),
         alliance_top_up_request_type: merchantData.merchant_account_type,
         alliance_top_up_request_name: accountName,
         alliance_top_up_request_account: accountNumber,
-        alliance_top_up_request_attachment: publicUrl,
         alliance_top_up_request_member_id:
           params.teamMemberProfile.alliance_member_id,
       },
     });
+
+    publicUrls.forEach(async (url) => {
+      await tx.alliance_top_up_request_attachment_table.create({
+        data: {
+          alliance_top_up_request_attachment_request_id:
+            newDeposit.alliance_top_up_request_id,
+          alliance_top_up_request_attachment_url: url,
+        },
+      });
+    });
+
     await tx.alliance_transaction_table.create({
       data: {
         transaction_amount: Number(amount),
@@ -354,32 +364,47 @@ export const depositListPostModel = async (
   )}`;
 
   const topUpRequests: TopUpRequestData[] = await prisma.$queryRaw`
-    SELECT 
-      u.user_id,
-      u.user_first_name,
-      u.user_last_name,
-      u.user_email,
-      u.user_username,
-      u.user_profile_picture,
-      m.alliance_member_id,
-      t.*,
-      approver.user_username AS approver_username,
-      approver.user_profile_picture AS approver_profile_picture,
-      approver.user_id AS approver_id
-    FROM alliance_schema.alliance_top_up_request_table t
-    JOIN alliance_schema.alliance_member_table m 
-      ON t.alliance_top_up_request_member_id = m.alliance_member_id
-    JOIN user_schema.user_table u 
-      ON u.user_id = m.alliance_member_user_id
-    LEFT JOIN alliance_schema.alliance_member_table mt 
-      ON mt.alliance_member_id = t.alliance_top_up_request_approved_by
-    LEFT JOIN user_schema.user_table approver 
-      ON approver.user_id = mt.alliance_member_user_id
-    WHERE ${dataWhereClause}
-    ${orderBy}
-    LIMIT ${Prisma.raw(limit.toString())}
-    OFFSET ${Prisma.raw(offset.toString())}
-  `;
+SELECT 
+  u.user_id,
+  u.user_first_name,
+  u.user_last_name,
+  u.user_email,
+  u.user_username,
+  u.user_profile_picture,
+  m.alliance_member_id,
+  t.*,
+  approver.user_username AS approver_username,
+  approver.user_profile_picture AS approver_profile_picture,
+  approver.user_id AS approver_id,
+  array_agg(att.alliance_top_up_request_attachment_url) AS attachment_url
+FROM alliance_schema.alliance_top_up_request_table t
+JOIN alliance_schema.alliance_member_table m 
+  ON t.alliance_top_up_request_member_id = m.alliance_member_id
+JOIN user_schema.user_table u 
+  ON u.user_id = m.alliance_member_user_id
+LEFT JOIN alliance_schema.alliance_member_table mt 
+  ON mt.alliance_member_id = t.alliance_top_up_request_approved_by
+LEFT JOIN user_schema.user_table approver 
+  ON approver.user_id = mt.alliance_member_user_id
+LEFT JOIN alliance_schema.alliance_top_up_request_attachment_table att
+  ON att.alliance_top_up_request_attachment_request_id = t.alliance_top_up_request_id
+WHERE ${dataWhereClause}
+GROUP BY 
+  u.user_id, 
+  u.user_first_name, 
+  u.user_last_name, 
+  u.user_email, 
+  u.user_username, 
+  u.user_profile_picture,
+  m.alliance_member_id, 
+  t.alliance_top_up_request_id, 
+  approver.user_username, 
+  approver.user_profile_picture, 
+  approver.user_id
+${orderBy}
+LIMIT ${Prisma.raw(limit.toString())}
+OFFSET ${Prisma.raw(offset.toString())}
+`;
 
   const statusCounts: { status: string; count: bigint }[] =
     await prisma.$queryRaw`

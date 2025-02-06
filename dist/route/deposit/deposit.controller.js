@@ -2,7 +2,7 @@ import { supabaseClient } from "../../utils/supabase.js";
 import { depositHistoryPostModel, depositListPostModel, depositPostModel, depositPutModel, } from "./deposit.model.js";
 export const depositPostController = async (c) => {
     const supabase = supabaseClient;
-    const { amount, topUpMode, accountName, accountNumber, receipt, publicUrl } = c.get("params");
+    const { amount, topUpMode, accountName, accountNumber, publicUrls } = c.get("params");
     try {
         const teamMemberProfile = c.get("teamMemberProfile");
         await depositPostModel({
@@ -11,15 +11,16 @@ export const depositPostController = async (c) => {
                 topUpMode,
                 accountName,
                 accountNumber,
-                receipt,
-                publicUrl,
+                publicUrls,
             },
             teamMemberProfile: teamMemberProfile,
         });
         return c.json({ message: "Deposit Created" }, { status: 200 });
     }
     catch (e) {
-        await supabase.storage.from("REQUEST_ATTACHMENTS").remove([publicUrl]);
+        publicUrls.forEach(async (url) => {
+            await supabase.storage.from("REQUEST_ATTACHMENTS").remove([url]);
+        });
         return c.json({ message: "Internal Server Error" }, { status: 500 });
     }
 };
