@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { calculateFee, calculateFinalAmount } from "../../utils/function.js";
+import { calculateFee, calculateFinalAmount, getPhilippinesTime, } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 export const withdrawModel = async (params) => {
     const { earnings, accountNumber, accountName, amount, bank, teamMemberProfile, } = params;
@@ -386,7 +386,7 @@ export const withdrawHistoryReportPostModel = async (params) => {
 export const withdrawHistoryReportPostTotalModel = async (params) => {
     const { take, skip, type } = params;
     const intervals = [];
-    let currentEnd = new Date(); // Start with today at 11:59 PM
+    let currentEnd = getPhilippinesTime(new Date()); // Start with today at 11:59 PM
     currentEnd.setHours(23, 59, 59, 999);
     // Adjust the initial end date based on the skip count
     switch (type) {
@@ -420,6 +420,7 @@ export const withdrawHistoryReportPostTotalModel = async (params) => {
                 intervalStart.setHours(0, 0, 0, 0); // 12:00 AM
                 break;
         }
+        console.log(intervalStart, intervalEnd);
         intervals.push({
             start: intervalStart.toISOString(),
             end: intervalEnd.toISOString(),

@@ -1,15 +1,21 @@
 import { PrismaClient } from "@prisma/client";
+import { getPhilippinesTime } from "../../utils/function.js";
 const prisma = new PrismaClient();
 export const dashboardPostModel = async (params) => {
     return await prisma.$transaction(async (tx) => {
         const { dateFilter } = params;
-        // Define default dates using PostgreSQL-friendly format
         const startDate = dateFilter.start
-            ? new Date(dateFilter.start).toISOString().split("T")[0] + "T00:00:00Z"
-            : new Date(new Date()).toISOString().split("T")[0] + "T00:00:00Z";
+            ? getPhilippinesTime(new Date(dateFilter.start))
+                .toISOString()
+                .split("T")[0] + "T00:00:00Z"
+            : getPhilippinesTime(new Date()).toISOString().split("T")[0] +
+                "T00:00:00Z";
         const endDate = dateFilter.end
-            ? new Date(dateFilter.end).toISOString().split("T")[0] + "T23:59:59Z"
-            : new Date(new Date()).toISOString().split("T")[0] + "T23:59:59Z";
+            ? getPhilippinesTime(new Date(dateFilter.end))
+                .toISOString()
+                .split("T")[0] + "T23:59:59Z"
+            : getPhilippinesTime(new Date()).toISOString().split("T")[0] +
+                "T23:59:59Z";
         const [totalEarnings, packageEarnings, totalActivatedUserByDate, totalApprovedWithdrawal, totalApprovedReceipts, totalWithdraw, bountyEarnings, activePackageWithinTheDay, chartDataRaw,] = await Promise.all([
             tx.alliance_top_up_request_table.aggregate({
                 _sum: { alliance_top_up_request_amount: true },

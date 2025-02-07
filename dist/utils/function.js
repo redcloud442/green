@@ -34,3 +34,6 @@ export const calculateFee = (amount, selectedEarnings) => {
     }
     return 0;
 };
+export const getPhilippinesTime = (date) => {
+    return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+};
