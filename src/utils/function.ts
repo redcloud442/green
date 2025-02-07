@@ -50,3 +50,7 @@ export const calculateFee = (
   }
   return 0;
 };
+
+export const getPhilippinesTime = (date: Date) => {
+  return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+};
