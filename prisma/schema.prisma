@@ -7,7 +7,7 @@ datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
-  schemas   = ["user_schema","alliance_schema","packages_schema","merchant_schema","public"]
+  schemas   = ["user_schema","alliance_schema","packages_schema","merchant_schema","chat_schema","public"]
 }
 
 enum Role {
@@ -15,6 +15,7 @@ enum Role {
   ADMIN
   MERCHANT
   ACCOUNTING
+  CHAT_SUPPORT
 @@schema("alliance_schema")
 }
 
@@ -88,6 +89,9 @@ model alliance_member_table {
   alliance_notification_table alliance_notification_table[]
   alliance_preferred_withdrawal_table alliance_preferred_withdrawal_table[]
   alliance_ranking_table alliance_ranking_table[]
+  chat_session_table chat_session_table[]
+  chat_message_table chat_message_table[]
+  chat_session_support_table chat_session_table[] @relation("Support")
 
   package_ally_bounty_log_from package_ally_bounty_log[] @relation("FromMember")
   @@schema("alliance_schema")
@@ -185,8 +189,6 @@ model alliance_top_up_request_table {
   alliance_top_up_request_bank_name    String?
   alliance_top_up_request_account      String
 
-
-
   alliance_top_up_request_name         String
   alliance_top_up_request_attachment   String?
   alliance_top_up_request_reject_note  String?
@@ -254,7 +256,6 @@ model alliance_transaction_table {
   @@schema("alliance_schema")
 }
 
-
 model package_table {
   package_id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   package_name       String
@@ -315,7 +316,6 @@ model package_earnings_log {
 
 }
 
-
 model package_ally_bounty_log {
   package_ally_bounty_log_id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   package_ally_bounty_log_date_created    DateTime @default(now()) @db.Timestamptz(3)
@@ -350,7 +350,6 @@ model merchant_table {
   @@schema("merchant_schema")
 }
 
-
 model merchant_member_table {
   merchant_member_id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   merchant_member_date_created     DateTime @default(now()) @db.Timestamptz(3)
@@ -362,7 +361,6 @@ model merchant_member_table {
   @@schema("merchant_schema")
 }
 
-
 model merchant_balance_log {
   merchant_balance_log_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   merchant_balance_log_date DateTime @default(now()) @db.Timestamptz(3)
@@ -371,8 +369,6 @@ model merchant_balance_log {
 
   @@schema("merchant_schema")
 }
-
-
 
 model error_table {
   error_id                String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
@@ -385,7 +381,6 @@ model error_table {
   @@schema("public")
 }
 
-
 model alliance_notification_table {
   alliance_notification_id                String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   alliance_notification_message           String
@@ -396,4 +391,32 @@ model alliance_notification_table {
   alliance_member_table alliance_member_table @relation(fields: [alliance_notification_user_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
 
   @@schema("alliance_schema")
+}
+
+model chat_session_table {
+  chat_session_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  chat_session_date DateTime @default(now()) @db.Timestamptz(3)
+  chat_session_alliance_member_id String @db.Uuid
+  chat_session_status String
+  chat_session_support_id String? @db.Uuid
+
+  alliance_member_table alliance_member_table @relation(fields: [chat_session_alliance_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+  chat_session_support_table alliance_member_table? @relation("Support",  fields: [chat_session_support_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+  chat_message_table chat_message_table[]
+
+  @@schema("chat_schema")
+}
+
+model chat_message_table {
+  chat_message_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  chat_message_date DateTime @default(now()) @db.Timestamptz(3)
+  chat_message_content String
+  chat_message_session_id String @db.Uuid
+  chat_message_alliance_member_id String @db.Uuid
+  chat_message_sender_user String
+
+  chat_session_table chat_session_table @relation(fields: [chat_message_session_id], references: [chat_session_id], onDelete: Cascade, onUpdate: Cascade)
+  alliance_member_table alliance_member_table @relation(fields: [chat_message_alliance_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@schema("chat_schema")
 }

@@ -467,3 +467,14 @@ export const notificationBatchPutSchema = z.object({
     })
   ),
 });
+
+//chat schema
+
+export const chatSessionPostSchema = z.object({
+  page: z.number().min(1),
+  limit: z.number().min(1).max(10),
+});
+
+export const chatSessionGetSchema = z.object({
+  sessionId: z.string().uuid(),
+});

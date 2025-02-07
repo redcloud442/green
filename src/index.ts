@@ -1,12 +1,16 @@
 import { serve } from "@hono/node-server";
+import { createServerClient, parseCookieHeader } from "@supabase/ssr";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import type { Server as HTTPSServer } from "node:http";
+import { Server as SocketIoServer } from "socket.io";
 import { envConfig } from "./env.js";
 import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
+import { chatSessionPostModel } from "./route/chat/chat.model.js";
 import route from "./route/route.js";
-
+import prisma from "./utils/prisma.js";
 const app = new Hono();
 
 app.use(
@@ -35,9 +39,150 @@ app.use(logger());
 
 app.route("/api/v1", route);
 
-serve({
+const server = serve({
   fetch: app.fetch,
   port: envConfig.PORT,
 });
+
+const io = new SocketIoServer(server as HTTPSServer);
+
+io.use((socket, next) => {
+  const authCookies = parseCookieHeader(socket.request.headers.cookie || "");
+  const supabase = createServerClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return authCookies;
+        },
+      },
+    }
+  );
+
+  supabase.auth.getUser().then(async ({ data }) => {
+    socket.data.user = data.user;
+
+    const teamMemberProfile = await prisma.alliance_member_table.findFirst({
+      where: {
+        alliance_member_user_id: socket.data.user?.id,
+      },
+    });
+
+    socket.data.teamMemberProfile = teamMemberProfile;
+
+    next();
+  });
+});
+
+io.on("connection", async (socket) => {
+  socket.on("requestSupportSession", (sessionId, teamId) => {
+    socket.join(sessionId);
+    io.to(socket.id).emit("waitingForAdmin", {
+      message: "Waiting for an admin to accept your session...",
+    });
+
+    io.to(`${teamId}-chat-support-admin`).emit("newQueueSession", {
+      sessionId,
+    });
+  });
+
+  socket.on("acceptSupportSession", ({ sessionId }) => {
+    const teamMemberProfile = socket.data.teamMemberProfile;
+
+    if (teamMemberProfile?.alliance_member_role !== "ADMIN") {
+      return;
+    }
+    io.to(sessionId).emit("supportSessionAccepted", { sessionId });
+  });
+
+  socket.on("joinRoom", async (roomId, userName, allianceMemberId) => {
+    const teamMemberProfile = socket.data.teamMemberProfile;
+
+    if (teamMemberProfile?.alliance_member_role === "ADMIN") {
+      const existingMessages = await prisma.chat_message_table.findMany({
+        where: { chat_message_session_id: roomId },
+        orderBy: { chat_message_date: "asc" },
+      });
+
+      if (existingMessages.length === 0) {
+        const defaultMessage = {
+          chat_message_content:
+            "Welcome to the support chat! How can I help you today?",
+          chat_message_session_id: roomId,
+          chat_message_alliance_member_id: allianceMemberId,
+          chat_message_date: new Date().toISOString(),
+          chat_message_sender_user: userName,
+        };
+
+        // Save the default message to the database
+        await prisma.chat_message_table.create({ data: defaultMessage });
+      }
+    }
+
+    const messages = await prisma.chat_message_table.findMany({
+      where: {
+        chat_message_session_id: roomId,
+      },
+      orderBy: {
+        chat_message_date: "asc",
+      },
+    });
+
+    socket.emit("messages", messages);
+    socket.join(roomId);
+  });
+
+  socket.on("sendMessage", async (message) => {
+    await prisma.chat_message_table.create({ data: { ...message } });
+    io.to(message.chat_message_session_id).emit("newMessage", message);
+  });
+
+  socket.on("joinWaitingRoom", (roomName) => {
+    socket.join(`${roomName}-chat-support-admin`);
+  });
+
+  socket.on("fetchWaitingList", async (page, limit, roomName) => {
+    const teamMemberProfile = socket.data.teamMemberProfile;
+
+    if (teamMemberProfile?.alliance_member_role !== "ADMIN") {
+      return;
+    }
+    const data = await chatSessionPostModel({ page, limit });
+    io.to(`${roomName}-chat-support-admin`).emit("waitingList", data);
+  });
+
+  socket.on("endSupport", async (sessionId, userName) => {
+    await prisma.chat_session_table.update({
+      where: { chat_session_id: sessionId },
+      data: { chat_session_status: "SUPPORT ENDED" },
+    });
+
+    const teamMemberProfile = socket.data.teamMemberProfile;
+
+    let messages;
+    if (teamMemberProfile?.alliance_member_role === "ADMIN") {
+      messages = await prisma.chat_message_table.create({
+        data: {
+          chat_message_content: "Support session ended",
+
+          chat_message_session_id: sessionId,
+          chat_message_alliance_member_id:
+            socket.data.teamMemberProfile?.alliance_member_id,
+          chat_message_date: new Date().toISOString(),
+          chat_message_sender_user: userName,
+        },
+      });
+    }
+
+    io.to(sessionId).emit("endSupport", { sessionId, messages });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
+export default io;
 
 console.log(`Server is running on port ${envConfig.PORT}`);
