@@ -436,13 +436,13 @@ export const withdrawListPostModel = async (params: {
 
   if (dateFilter?.start && dateFilter?.end) {
     const startDate = getPhilippinesTime(
-      new Date(dateFilter.start)
-    ).setUTCHours(0, 0, 0, 0);
-    const endDate = getPhilippinesTime(new Date(dateFilter.end)).setUTCHours(
-      23,
-      59,
-      59,
-      999
+      new Date(dateFilter.start || new Date()),
+      "start"
+    );
+
+    const endDate = getPhilippinesTime(
+      new Date(dateFilter.end || new Date()),
+      "end"
     );
 
     commonConditions.push(
@@ -617,7 +617,7 @@ export const withdrawHistoryReportPostTotalModel = async (params: {
   const { take, skip, type } = params;
   const intervals = [];
 
-  let currentEnd = getPhilippinesTime(new Date()); // Start with today at 11:59 PM
+  let currentEnd = new Date(); // Start with today at 11:59 PM
   currentEnd.setHours(23, 59, 59, 999);
 
   // Adjust the initial end date based on the skip count
@@ -656,8 +656,8 @@ export const withdrawHistoryReportPostTotalModel = async (params: {
     }
 
     intervals.push({
-      start: intervalStart.toISOString(),
-      end: intervalEnd.toISOString(),
+      start: getPhilippinesTime(intervalStart, "start"),
+      end: getPhilippinesTime(intervalEnd, "end"),
     });
 
     // Move currentEnd to the previous interval

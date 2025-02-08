@@ -271,8 +271,8 @@ export const withdrawListPostModel = async (params) => {
         commonConditions.push(Prisma.raw(`u.user_id::TEXT = '${userFilter}'`));
     }
     if (dateFilter?.start && dateFilter?.end) {
-        const startDate = getPhilippinesTime(new Date(dateFilter.start)).setUTCHours(0, 0, 0, 0);
-        const endDate = getPhilippinesTime(new Date(dateFilter.end)).setUTCHours(23, 59, 59, 999);
+        const startDate = getPhilippinesTime(new Date(dateFilter.start || new Date()), "start");
+        const endDate = getPhilippinesTime(new Date(dateFilter.end || new Date()), "end");
         commonConditions.push(Prisma.raw(`t.alliance_withdrawal_request_date_updated::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`));
     }
     if (search) {
@@ -386,7 +386,7 @@ export const withdrawHistoryReportPostModel = async (params) => {
 export const withdrawHistoryReportPostTotalModel = async (params) => {
     const { take, skip, type } = params;
     const intervals = [];
-    let currentEnd = getPhilippinesTime(new Date()); // Start with today at 11:59 PM
+    let currentEnd = new Date(); // Start with today at 11:59 PM
     currentEnd.setHours(23, 59, 59, 999);
     // Adjust the initial end date based on the skip count
     switch (type) {
@@ -420,10 +420,9 @@ export const withdrawHistoryReportPostTotalModel = async (params) => {
                 intervalStart.setHours(0, 0, 0, 0); // 12:00 AM
                 break;
         }
-        console.log(intervalStart, intervalEnd);
         intervals.push({
-            start: intervalStart.toISOString(),
-            end: intervalEnd.toISOString(),
+            start: getPhilippinesTime(intervalStart, "start"),
+            end: getPhilippinesTime(intervalEnd, "end"),
         });
         // Move currentEnd to the previous interval
         switch (type) {
