@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import {} from "../../schema/schema.js";
+import { getPhilippinesTime } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 export const depositPostModel = async (params) => {
     const { amount, accountName, accountNumber, publicUrls, topUpMode } = params.TopUpFormValues;
@@ -211,9 +212,10 @@ export const depositListPostModel = async (params, teamMemberProfile) => {
         commonConditions.push(Prisma.raw(`u.user_id::TEXT = '${userFilter}'`));
     }
     if (dateFilter?.start && dateFilter?.end) {
-        const startDate = new Date(dateFilter.start).toISOString();
-        const endDate = new Date(dateFilter.end).toISOString();
-        commonConditions.push(Prisma.raw(`t.alliance_top_up_request_date::DATE BETWEEN '${startDate}'::DATE AND '${endDate}'::DATE`));
+        const startDate = new Date(getPhilippinesTime(new Date(dateFilter.start)).setUTCHours(0, 0, 0, 0)).toISOString();
+        const endDate = new Date(getPhilippinesTime(new Date(dateFilter.end)).setUTCHours(23, 59, 59, 999)).toISOString();
+        console.log(startDate, endDate);
+        commonConditions.push(Prisma.raw(`t.alliance_top_up_request_date_updated::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`));
     }
     if (search) {
         commonConditions.push(Prisma.raw(`(
