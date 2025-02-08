@@ -35,14 +35,14 @@ export const calculateFee = (amount, selectedEarnings) => {
     return 0;
 };
 export const getPhilippinesTime = (date, time) => {
-    // Set the hours, minutes, and seconds based on the start or end of the day
+    const philippinesOffset = 8 * 60 * 60 * 1000;
+    const adjustedDate = new Date(date.getTime() + philippinesOffset);
     if (time === "start") {
-        date.setUTCHours(0, 0, 0, 0);
+        adjustedDate.setUTCHours(0, 0, 0, 0);
     }
     else {
-        date.setUTCHours(23, 59, 59, 999);
+        adjustedDate.setUTCHours(23, 59, 59, 999);
     }
-    // Convert to ISO string and replace 'Z' with the correct offset for Manila
-    const isoString = date.toISOString().replace("Z", "+08:00");
-    return isoString;
+    const resultDate = new Date(adjustedDate.getTime() - philippinesOffset);
+    return resultDate.toISOString();
 };
