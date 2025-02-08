@@ -575,12 +575,16 @@ export const withdrawHistoryReportPostModel = async (params: {
     await prisma.alliance_withdrawal_request_table.aggregate({
       where: {
         alliance_withdrawal_request_date: {
-          gte: getPhilippinesTime(new Date(startDate || new Date()), "start"),
-
-          lte: getPhilippinesTime(new Date(endDate || new Date()), "end"),
+          gte: dateFilter.startDate
+            ? getPhilippinesTime(new Date(startDate), "start")
+            : undefined,
+          lte: dateFilter.endDate
+            ? getPhilippinesTime(new Date(endDate), "end")
+            : undefined,
         },
         alliance_withdrawal_request_status: "APPROVED",
       },
+
       _count: true,
       _sum: {
         alliance_withdrawal_request_amount: true,
