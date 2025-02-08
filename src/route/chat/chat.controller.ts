@@ -1,6 +1,12 @@
-import { sendErrorResponse } from "@/utils/function.js";
 import type { Context } from "hono";
-import { chatSessionPostModel, chatSessionPutModel } from "./chat.model.js";
+import { sendErrorResponse } from "../../utils/function.js";
+
+import {
+  chatRequestSessionModel,
+  chatSessionGetMessageModel,
+  chatSessionPostModel,
+  chatSessionPutModel,
+} from "./chat.model.js";
 
 export const chatSessionPostController = async (c: Context) => {
   try {
@@ -22,6 +28,30 @@ export const chatSessionGetController = async (c: Context) => {
     await chatSessionPutModel(params, teamMemberProfile);
 
     return c.json("Successfully updated", 200);
+  } catch (e) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const chatSessionGetMessageController = async (c: Context) => {
+  try {
+    const teamMemberProfile = c.get("teamMemberProfile");
+
+    const data = await chatSessionGetMessageModel(teamMemberProfile);
+
+    return c.json(data, 200);
+  } catch (e) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const chatRequestSessionController = async (c: Context) => {
+  try {
+    const teamMemberProfile = c.get("teamMemberProfile");
+
+    const data = await chatRequestSessionModel(teamMemberProfile);
+
+    return c.json(data, 200);
   } catch (e) {
     return sendErrorResponse("Internal Server Error", 500);
   }

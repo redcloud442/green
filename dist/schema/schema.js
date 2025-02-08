@@ -185,8 +185,8 @@ export const indirectReferralsSchemaPost = z.object({
 });
 //packages schema
 export const packagePostSchema = z.object({
-    amount: z.number().refine((val) => Number(val) >= 100, {
-        message: "Minimum amount is 100 pesos",
+    amount: z.number().refine((val) => Number(val) >= 300, {
+        message: "Minimum amount is 300 pesos",
     }),
     packageId: z.string().uuid(),
 });
@@ -375,4 +375,12 @@ export const notificationBatchPutSchema = z.object({
         packageConnectionId: z.string().uuid(),
         teamMemberId: z.string().uuid(),
     })),
+});
+//chat schema
+export const chatSessionPostSchema = z.object({
+    page: z.number().min(1),
+    limit: z.number().min(1).max(10),
+});
+export const chatSessionGetSchema = z.object({
+    sessionId: z.string().uuid(),
 });

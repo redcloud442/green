@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { protectionMiddleware } from "../middleware/protection.middleware.js";
 import auth from "./auth/auth.route.js";
+import chat from "./chat/chat.route.js";
 import dashboard from "./dashboard/dashboard.route.js";
 import deposit from "./deposit/deposit.route.js";
 import email from "./email/email.route.js";
@@ -59,5 +60,8 @@ app.route("/email", email);
 //notification route
 app.use("/notification/*", protectionMiddleware);
 app.route("/notification", notification);
+//chat route
+app.use("/chat/*", protectionMiddleware);
+app.route("/chat", chat);
 app.get("/", (c) => c.text("This is the api endpoint"));
 export default app;
