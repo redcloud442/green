@@ -167,6 +167,7 @@ io.on("connection", async (socket) => {
       },
     });
 
+    socket.leave(sessionId);
     io.to(sessionId).emit("endSupport", { sessionId, messages });
   });
 

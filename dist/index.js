@@ -87,7 +87,16 @@ io.on("connection", async (socket) => {
         io.to(roomId).emit("messages", messages);
     });
     socket.on("acceptSupportSession", async ({ sessionId }) => {
-        io.emit("supportSessionAccepted", { sessionId });
+        // Leave any previous room to avoid conflicts
+        const rooms = Array.from(socket.rooms);
+        rooms.forEach((room) => {
+            if (room !== socket.id) {
+                socket.leave(room);
+            }
+        });
+        // Join the new session room
+        socket.join(sessionId);
+        io.to(sessionId).emit("supportSessionAccepted", { sessionId });
     });
     socket.on("sendMessage", async (message) => {
         const teamMemberProfile = socket.data.teamMemberProfile;
