@@ -116,7 +116,16 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("acceptSupportSession", async ({ sessionId }) => {
-    socket.join(sessionId); // Ensure socket joins the session room
+    // Leave any previous room to avoid conflicts
+    const rooms = Array.from(socket.rooms);
+    rooms.forEach((room) => {
+      if (room !== socket.id) {
+        socket.leave(room);
+      }
+    });
+
+    // Join the new session room
+    socket.join(sessionId);
     io.to(sessionId).emit("supportSessionAccepted", { sessionId });
   });
 
