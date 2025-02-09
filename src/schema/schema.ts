@@ -467,3 +467,25 @@ export const notificationBatchPutSchema = z.object({
     })
   ),
 });
+
+//chat schema
+
+export const chatSessionPostSchema = z.object({
+  page: z.number().min(1),
+  limit: z.number().min(1).max(10),
+});
+
+export const chatSessionGetSchema = z.object({
+  sessionId: z.string().uuid(),
+});
+
+export const chatMessageSchema = z.object({
+  chat_message_session_id: z.string().min(1, "Session ID is required"),
+  chat_message_user_id: z.string().min(1, "User ID is required"),
+  chat_message_content: z.string().min(1, "Message content cannot be empty"),
+  chat_message_timestamp: z
+    .string()
+    .refine((timestamp) => !isNaN(Date.parse(timestamp)), {
+      message: "Invalid timestamp format",
+    }),
+});
