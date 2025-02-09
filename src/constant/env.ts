@@ -5,3 +5,4 @@ export const STAGES = {
 
 export type StageKey = keyof typeof STAGES;
 export type Stage = (typeof STAGES)[StageKey];
+//test
