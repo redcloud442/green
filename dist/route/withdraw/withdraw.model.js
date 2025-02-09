@@ -265,9 +265,11 @@ export const withdrawListPostModel = async (params) => {
         commonConditions.push(Prisma.raw(`u.user_id::TEXT = '${userFilter}'`));
     }
     if (dateFilter?.start && dateFilter?.end) {
-        const startDate = getPhilippinesTime(new Date(dateFilter.start || new Date()), "start");
-        const endDate = getPhilippinesTime(new Date(dateFilter.end || new Date()), "end");
-        commonConditions.push(Prisma.raw(`t.alliance_withdrawal_request_date_updated::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`));
+        const startDate = new Date(dateFilter.start || new Date()).toISOString().split("T")[0] +
+            " 00:00:00.000";
+        const endDate = new Date(dateFilter.end || new Date()).toISOString().split("T")[0] +
+            " 23:59:59.999";
+        commonConditions.push(Prisma.raw(`t.alliance_withdrawal_request_date_updated BETWEEN '${startDate}' AND '${endDate}'`));
     }
     if (search) {
         commonConditions.push(Prisma.raw(`(
