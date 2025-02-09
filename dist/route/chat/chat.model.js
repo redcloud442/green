@@ -149,7 +149,6 @@ export const chatRequestSessionModel = async (teamMemberProfile) => {
 };
 export const chatSessionGetMessageIdModel = async (params) => {
     const { id } = params;
-    console.log(id);
     const message = await prisma.chat_message_table.findMany({
         where: {
             chat_message_session_id: id,

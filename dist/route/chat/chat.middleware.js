@@ -102,7 +102,6 @@ export const chatSessionGetMessageIdMiddleware = async (c, next) => {
         return sendErrorResponse("Too Many Requests", 429);
     }
     const { id } = c.req.param();
-    console.log(id);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

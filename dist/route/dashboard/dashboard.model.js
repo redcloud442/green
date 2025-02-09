@@ -122,7 +122,6 @@ export const dashboardPostModel = async (params) => {
             earnings: row.earnings || 0,
             withdraw: row.withdraw || 0,
         }));
-        console.log(chartData);
         return {
             totalEarnings: totalEarnings._sum.alliance_top_up_request_amount ?? 0,
             totalWithdraw: (totalWithdraw._sum.alliance_withdrawal_request_amount ?? 0) -

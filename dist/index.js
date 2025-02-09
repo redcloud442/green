@@ -58,7 +58,6 @@ io.on("connection", async (socket) => {
         const teamMemberProfile = socket.data.teamMemberProfile;
         socket.join(roomId);
         if (teamMemberProfile?.alliance_member_role === "ADMIN") {
-            console.log(teamMemberProfile);
             await prisma.$transaction(async (tx) => {
                 const existingMessages = await tx.chat_message_table.findMany({
                     where: { chat_message_session_id: roomId },

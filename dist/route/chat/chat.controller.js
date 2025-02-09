@@ -44,7 +44,6 @@ export const chatRequestSessionController = async (c) => {
 export const chatSessionGetMessageIdController = async (c) => {
     try {
         const params = c.get("params");
-        console.log(params);
         const data = await chatSessionGetMessageIdModel(params);
         return c.json(data, 200);
     }
