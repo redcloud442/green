@@ -116,7 +116,8 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("acceptSupportSession", async ({ sessionId }) => {
-    io.emit("supportSessionAccepted", { sessionId });
+    socket.join(sessionId); // Ensure socket joins the session room
+    io.to(sessionId).emit("supportSessionAccepted", { sessionId });
   });
 
   socket.on("sendMessage", async (message) => {
