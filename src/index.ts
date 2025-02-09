@@ -9,7 +9,9 @@ import { envConfig } from "./env.js";
 import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
 import route from "./route/route.js";
+import { chatMessageSchema } from "./schema/schema.js";
 import prisma from "./utils/prisma.js";
+import { rateLimit } from "./utils/redis.js";
 const app = new Hono();
 
 app.use(
@@ -112,8 +114,36 @@ io.on("connection", async (socket) => {
     socket.join(roomId);
   });
 
+  socket.on("acceptSupportSession", ({ sessionId }) => {
+    const teamMemberProfile = socket.data.teamMemberProfile;
+
+    if (teamMemberProfile?.alliance_member_role !== "ADMIN") {
+      return;
+    }
+    io.to(sessionId).emit("supportSessionAccepted", { sessionId });
+  });
+
   socket.on("sendMessage", async (message) => {
+    const teamMemberProfile = socket.data.teamMemberProfile;
+
+    const { error } = chatMessageSchema.safeParse(message);
+
+    if (error) {
+      return socket.emit("error", error.message);
+    }
+
+    const isAllowed = await rateLimit(
+      `rate-limit:${teamMemberProfile.alliance_member_id}:chat-message-`,
+      10,
+      60
+    );
+
+    if (!isAllowed) {
+      return socket.emit("error", "Too Many Requests");
+    }
+
     await prisma.chat_message_table.create({ data: { ...message } });
+
     io.to(message.chat_message_session_id).emit("newMessage", message);
   });
 

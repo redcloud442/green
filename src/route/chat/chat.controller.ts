@@ -3,6 +3,7 @@ import { sendErrorResponse } from "../../utils/function.js";
 
 import {
   chatRequestSessionModel,
+  chatSessionGetMessageIdModel,
   chatSessionGetMessageModel,
   chatSessionPostModel,
   chatSessionPutModel,
@@ -50,6 +51,20 @@ export const chatRequestSessionController = async (c: Context) => {
     const teamMemberProfile = c.get("teamMemberProfile");
 
     const data = await chatRequestSessionModel(teamMemberProfile);
+
+    return c.json(data, 200);
+  } catch (e) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const chatSessionGetMessageIdController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    console.log(params);
+
+    const data = await chatSessionGetMessageIdModel(params);
 
     return c.json(data, 200);
   } catch (e) {

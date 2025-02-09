@@ -3,10 +3,12 @@ import {
   chatRequestSessionController,
   chatSessionGetController,
   chatSessionGetMessageController,
+  chatSessionGetMessageIdController,
   chatSessionPostController,
 } from "./chat.controller.js";
 import {
   chatRequestSessionMiddleware,
+  chatSessionGetMessageIdMiddleware,
   chatSessionGetMessageMiddleware,
   chatSessionGetMiddleware,
   chatSessionPostMiddleware,
@@ -19,6 +21,12 @@ chat.post("/sessions", chatSessionPostMiddleware, chatSessionPostController);
 chat.post("/", chatRequestSessionMiddleware, chatRequestSessionController);
 
 chat.get("/", chatSessionGetMessageMiddleware, chatSessionGetMessageController);
+
+chat.get(
+  "/:id",
+  chatSessionGetMessageIdMiddleware,
+  chatSessionGetMessageIdController
+);
 
 chat.put("/sessions/:id", chatSessionGetMiddleware, chatSessionGetController);
 
