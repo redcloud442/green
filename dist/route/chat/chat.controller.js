@@ -1,5 +1,5 @@
 import { sendErrorResponse } from "../../utils/function.js";
-import { chatRequestSessionModel, chatSessionGetMessageModel, chatSessionPostModel, chatSessionPutModel, } from "./chat.model.js";
+import { chatRequestSessionModel, chatSessionGetMessageIdModel, chatSessionGetMessageModel, chatSessionPostModel, chatSessionPutModel, } from "./chat.model.js";
 export const chatSessionPostController = async (c) => {
     try {
         const params = c.get("params");
@@ -35,6 +35,17 @@ export const chatRequestSessionController = async (c) => {
     try {
         const teamMemberProfile = c.get("teamMemberProfile");
         const data = await chatRequestSessionModel(teamMemberProfile);
+        return c.json(data, 200);
+    }
+    catch (e) {
+        return sendErrorResponse("Internal Server Error", 500);
+    }
+};
+export const chatSessionGetMessageIdController = async (c) => {
+    try {
+        const params = c.get("params");
+        console.log(params);
+        const data = await chatSessionGetMessageIdModel(params);
         return c.json(data, 200);
     }
     catch (e) {

@@ -119,22 +119,13 @@ export const chatSessionGetMessageModel = async (teamMemberProfile) => {
       chat_session_id,
       chat_session_status,
       chat_session_date,
-      user_username,
-      JSON_AGG(
-          JSON_BUILD_OBJECT(
-              'chat_message_id', chat_message_id,
-              'chat_message_content', chat_message_content,
-              'chat_message_date', chat_message_date,
-              'chat_message_sender_user', chat_message_sender_user
-          )
-      ) AS messages
-  FROM chat_schema.chat_message_table
-  JOIN chat_schema.chat_session_table ON chat_message_session_id = chat_session_id
+      user_username
+  FROM chat_schema.chat_session_table
   JOIN alliance_schema.alliance_member_table ON chat_session_alliance_member_id = alliance_member_id
   JOIN user_schema.user_table ON alliance_member_user_id = user_id
   WHERE chat_session_support_id = ${alliance_member_id}::uuid AND chat_session_status != 'SUPPORT ONGOING'
-  GROUP BY chat_session_id, chat_session_status, chat_session_date, user_username
   ORDER BY chat_session_date DESC;
+
   `;
     const totalCount = await prisma.chat_session_table.count({
         where: {
@@ -155,4 +146,14 @@ export const chatRequestSessionModel = async (teamMemberProfile) => {
         });
     });
     return { message: "Session created" };
+};
+export const chatSessionGetMessageIdModel = async (params) => {
+    const { id } = params;
+    console.log(id);
+    const message = await prisma.chat_message_table.findMany({
+        where: {
+            chat_message_session_id: id,
+        },
+    });
+    return message;
 };

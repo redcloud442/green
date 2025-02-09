@@ -87,3 +87,25 @@ export const chatRequestSessionMiddleware = async (c, next) => {
     c.set("teamMemberProfile", teamMemberProfile);
     return await next();
 };
+export const chatSessionGetMessageIdMiddleware = async (c, next) => {
+    const user = c.get("user");
+    const response = await protectionAdmin(user.id, prisma);
+    if (response instanceof Response) {
+        return response;
+    }
+    const { teamMemberProfile } = response;
+    if (!teamMemberProfile) {
+        return sendErrorResponse("Unauthorized", 401);
+    }
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-message-id`, 50, 60);
+    if (!isAllowed) {
+        return sendErrorResponse("Too Many Requests", 429);
+    }
+    const { id } = c.req.param();
+    console.log(id);
+    if (!isAllowed) {
+        return sendErrorResponse("Too Many Requests", 429);
+    }
+    c.set("params", { id });
+    return await next();
+};

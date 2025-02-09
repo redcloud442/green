@@ -9,7 +9,6 @@ import { envConfig } from "./env.js";
 import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
 import route from "./route/route.js";
-import { chatMessageSchema } from "./schema/schema.js";
 import prisma from "./utils/prisma.js";
 import { rateLimit } from "./utils/redis.js";
 const app = new Hono();
@@ -79,26 +78,29 @@ io.use((socket, next) => {
 io.on("connection", async (socket) => {
   socket.on("joinRoom", async ({ roomId }) => {
     const teamMemberProfile = socket.data.teamMemberProfile;
+    socket.join(roomId);
 
     if (teamMemberProfile?.alliance_member_role === "ADMIN") {
-      const existingMessages = await prisma.chat_message_table.findMany({
-        where: { chat_message_session_id: roomId },
-        orderBy: { chat_message_date: "asc" },
-      });
-
-      if (existingMessages.length === 0) {
-        await prisma.chat_message_table.create({
-          data: {
-            chat_message_content:
-              "Hi!, Welcome to elevate chat support. How can I help you today?",
-            chat_message_session_id: roomId,
-            chat_message_alliance_member_id:
-              teamMemberProfile?.alliance_member_id,
-            chat_message_date: new Date().toISOString(),
-            chat_message_sender_user: "Chat Support", // Pass the correct value here
-          },
+      await prisma.$transaction(async (tx) => {
+        const existingMessages = await tx.chat_message_table.findMany({
+          where: { chat_message_session_id: roomId },
+          orderBy: { chat_message_date: "asc" },
         });
-      }
+
+        if (existingMessages.length === 0) {
+          await tx.chat_message_table.create({
+            data: {
+              chat_message_content:
+                "Hi!, Welcome to elevate chat support. How can I help you today?",
+              chat_message_session_id: roomId,
+              chat_message_alliance_member_id:
+                teamMemberProfile?.alliance_member_id,
+              chat_message_date: new Date().toISOString(),
+              chat_message_sender_user: "Chat Support", // Pass the correct value here
+            },
+          });
+        }
+      });
     }
 
     const messages = await prisma.chat_message_table.findMany({
@@ -110,27 +112,15 @@ io.on("connection", async (socket) => {
       },
     });
 
-    socket.emit("messages", messages);
-    socket.join(roomId);
+    io.to(roomId).emit("messages", messages);
   });
 
-  socket.on("acceptSupportSession", ({ sessionId }) => {
-    const teamMemberProfile = socket.data.teamMemberProfile;
-
-    if (teamMemberProfile?.alliance_member_role !== "ADMIN") {
-      return;
-    }
-    io.to(sessionId).emit("supportSessionAccepted", { sessionId });
+  socket.on("acceptSupportSession", async ({ sessionId }) => {
+    io.emit("supportSessionAccepted", { sessionId });
   });
 
   socket.on("sendMessage", async (message) => {
     const teamMemberProfile = socket.data.teamMemberProfile;
-
-    const { error } = chatMessageSchema.safeParse(message);
-
-    if (error) {
-      return socket.emit("error", error.message);
-    }
 
     const isAllowed = await rateLimit(
       `rate-limit:${teamMemberProfile.alliance_member_id}:chat-message-`,

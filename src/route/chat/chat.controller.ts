@@ -62,8 +62,6 @@ export const chatSessionGetMessageIdController = async (c: Context) => {
   try {
     const params = c.get("params");
 
-    console.log(params);
-
     const data = await chatSessionGetMessageIdModel(params);
 
     return c.json(data, 200);
