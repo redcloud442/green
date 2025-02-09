@@ -7,12 +7,14 @@ import {
   type user_table,
 } from "@prisma/client";
 import bcryptjs from "bcryptjs";
+import { getPhilippinesTime } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { supabaseClient } from "../../utils/supabase.js";
 
 export const userModelPut = async (params: {
   userId: string;
   email: string;
+
   password: string;
 }) => {
   const { userId, email, password } = params;
@@ -211,11 +213,9 @@ export const userModelGet = async (params: { memberId: string }) => {
   let canWithdrawPackage = false;
   let canWithdrawReferral = false;
   let canUserDeposit = false;
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
+  const todayStart = getPhilippinesTime(new Date(), "start");
 
-  const todayEnd = new Date();
-  todayEnd.setUTCHours(23, 59, 59, 999);
+  const todayEnd = getPhilippinesTime(new Date(), "end");
 
   const existingPackageWithdrawal =
     await prisma.alliance_withdrawal_request_table.findFirst({
@@ -345,7 +345,6 @@ export const userPatchModel = async (params: {
 
 export const userSponsorModel = async (params: { userId: string }) => {
   const { userId } = params;
-  
 
   const user: { user_username: string }[] = await prisma.$queryRaw`
   SELECT 

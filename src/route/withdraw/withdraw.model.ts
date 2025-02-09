@@ -1,9 +1,14 @@
+import { Prisma, type alliance_member_table } from "@prisma/client";
+import {
+  calculateFee,
+  calculateFinalAmount,
+  getPhilippinesTime,
+} from "../../utils/function.js";
 import type {
   WithdrawalRequestData,
   WithdrawReturnDataType,
-} from "@/utils/types.js";
-import { Prisma, type alliance_member_table } from "@prisma/client";
-import { calculateFee, calculateFinalAmount } from "../../utils/function.js";
+} from "../../utils/types.js";
+
 import prisma from "../../utils/prisma.js";
 
 export const withdrawModel = async (params: {
@@ -22,18 +27,10 @@ export const withdrawModel = async (params: {
     bank,
     teamMemberProfile,
   } = params;
-  const today = new Date().toISOString().slice(0, 10);
+  const startDate = getPhilippinesTime(new Date(), "start");
 
-  const startDate = new Date(`${today}T00:00:00Z`);
-  const endDate = new Date(`${today}T23:59:59Z`);
+  const endDate = getPhilippinesTime(new Date(), "end");
 
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
-
-  const todayEnd = new Date();
-  todayEnd.setUTCHours(23, 59, 59, 999);
-
-  // Check for "PACKAGE" withdrawals
   const existingPackageWithdrawal =
     await prisma.alliance_withdrawal_request_table.findFirst({
       where: {
@@ -44,8 +41,8 @@ export const withdrawModel = async (params: {
         },
         alliance_withdrawal_request_withdraw_type: earnings,
         alliance_withdrawal_request_date: {
-          gte: todayStart, // Start of the day
-          lte: todayEnd, // End of the day
+          gte: getPhilippinesTime(new Date(new Date()), "start"),
+          lte: getPhilippinesTime(new Date(new Date()), "end"),
         },
       },
     });
@@ -128,7 +125,7 @@ export const withdrawModel = async (params: {
         SELECT awr.alliance_withdrawal_request_approved_by AS "approverId",
                COUNT(awr.alliance_withdrawal_request_id) AS "requestCount"
         FROM alliance_schema.alliance_withdrawal_request_table awr
-        WHERE awr.alliance_withdrawal_request_date BETWEEN ${startDate} AND ${endDate}
+        WHERE awr.alliance_withdrawal_request_date::timestamptz BETWEEN ${startDate}::timestamptz AND ${endDate}::timestamptz
         GROUP BY awr.alliance_withdrawal_request_approved_by
       ) approvedRequests ON am.alliance_member_id = approvedRequests."approverId"
       WHERE am.alliance_member_role = 'ACCOUNTING'
@@ -430,12 +427,19 @@ export const withdrawListPostModel = async (params: {
   }
 
   if (dateFilter?.start && dateFilter?.end) {
-    const startDate = new Date(dateFilter.start).toISOString();
-    const endDate = new Date(dateFilter.end).toISOString();
+    const startDate = getPhilippinesTime(
+      new Date(dateFilter.start || new Date()),
+      "start"
+    );
+
+    const endDate = getPhilippinesTime(
+      new Date(dateFilter.end || new Date()),
+      "end"
+    );
 
     commonConditions.push(
       Prisma.raw(
-        `t.alliance_withdrawal_request_date::DATE BETWEEN '${startDate}'::DATE AND '${endDate}'::DATE`
+        `t.alliance_withdrawal_request_date_updated::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`
       )
     );
   }
@@ -571,15 +575,16 @@ export const withdrawHistoryReportPostModel = async (params: {
     await prisma.alliance_withdrawal_request_table.aggregate({
       where: {
         alliance_withdrawal_request_date: {
-          gte: startDate
-            ? new Date(new Date(startDate).setHours(0, 0, 0, 0))
-            : undefined, // Start of day in UTC
-          lte: endDate
-            ? new Date(new Date(endDate).setHours(23, 59, 59, 999))
-            : undefined, // End of day in UTC
+          gte: dateFilter.startDate
+            ? getPhilippinesTime(new Date(startDate), "start")
+            : undefined,
+          lte: dateFilter.endDate
+            ? getPhilippinesTime(new Date(endDate), "end")
+            : undefined,
         },
         alliance_withdrawal_request_status: "APPROVED",
       },
+
       _count: true,
       _sum: {
         alliance_withdrawal_request_amount: true,
@@ -606,7 +611,10 @@ export const withdrawHistoryReportPostTotalModel = async (params: {
   const intervals = [];
 
   let currentEnd = new Date(); // Start with today at 11:59 PM
-  currentEnd.setHours(23, 59, 59, 999);
+  const philippinesOffset = 8 * 60 * 60 * 1000;
+  const adjustedDate = new Date(currentEnd.getTime() + philippinesOffset);
+
+  adjustedDate.setUTCHours(23, 59, 59, 999);
 
   // Adjust the initial end date based on the skip count
   switch (type) {
@@ -630,7 +638,7 @@ export const withdrawHistoryReportPostTotalModel = async (params: {
 
     switch (type) {
       case "DAILY":
-        intervalStart.setDate(intervalEnd.getDate()); // Same day
+        intervalStart.setDate(intervalEnd.getDate() + 1); // Same day
         intervalStart.setHours(0, 0, 0, 0); // 12:00 AM
         break;
       case "WEEKLY":
@@ -644,8 +652,8 @@ export const withdrawHistoryReportPostTotalModel = async (params: {
     }
 
     intervals.push({
-      start: intervalStart.toISOString(),
-      end: intervalEnd.toISOString(),
+      start: getPhilippinesTime(intervalStart, "start"),
+      end: getPhilippinesTime(intervalEnd, "end"),
     });
 
     // Move currentEnd to the previous interval

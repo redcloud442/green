@@ -1,22 +1,22 @@
 import { PrismaClient } from "@prisma/client";
+import { getPhilippinesTime } from "../../utils/function.js";
 const prisma = new PrismaClient();
 export const dashboardPostModel = async (params) => {
     return await prisma.$transaction(async (tx) => {
         const { dateFilter } = params;
-        // Define default dates using PostgreSQL-friendly format
         const startDate = dateFilter.start
-            ? new Date(dateFilter.start).toISOString().split("T")[0] + "T00:00:00Z"
-            : new Date(new Date()).toISOString().split("T")[0] + "T00:00:00Z";
+            ? new Date(getPhilippinesTime(new Date(dateFilter.start), "start")).toISOString()
+            : getPhilippinesTime(new Date(), "start");
         const endDate = dateFilter.end
-            ? new Date(dateFilter.end).toISOString().split("T")[0] + "T23:59:59Z"
-            : new Date(new Date()).toISOString().split("T")[0] + "T23:59:59Z";
+            ? getPhilippinesTime(new Date(dateFilter.end), "end")
+            : getPhilippinesTime(new Date(), "end");
         const [totalEarnings, packageEarnings, totalActivatedUserByDate, totalApprovedWithdrawal, totalApprovedReceipts, totalWithdraw, bountyEarnings, activePackageWithinTheDay, chartDataRaw,] = await Promise.all([
             tx.alliance_top_up_request_table.aggregate({
                 _sum: { alliance_top_up_request_amount: true },
                 where: {
                     alliance_top_up_request_date_updated: {
-                        gte: startDate,
-                        lte: endDate,
+                        gte: getPhilippinesTime(new Date(dateFilter.start || new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(dateFilter.end || new Date()), "end"),
                     },
                     alliance_top_up_request_status: "APPROVED",
                 },
@@ -25,8 +25,8 @@ export const dashboardPostModel = async (params) => {
                 _sum: { package_member_amount: true, package_amount_earnings: true },
                 where: {
                     package_member_connection_created: {
-                        gte: startDate,
-                        lte: endDate,
+                        gte: getPhilippinesTime(new Date(dateFilter.start || new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(dateFilter.end || new Date()), "end"),
                     },
                 },
             }),
@@ -34,8 +34,8 @@ export const dashboardPostModel = async (params) => {
                 where: {
                     alliance_member_is_active: true,
                     alliance_member_date_updated: {
-                        gte: startDate,
-                        lte: endDate,
+                        gte: getPhilippinesTime(new Date(dateFilter.start || new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(dateFilter.end || new Date()), "end"),
                     },
                 },
             }),
@@ -43,8 +43,8 @@ export const dashboardPostModel = async (params) => {
                 where: {
                     alliance_withdrawal_request_status: "APPROVED",
                     alliance_withdrawal_request_date_updated: {
-                        gte: startDate,
-                        lte: endDate,
+                        gte: getPhilippinesTime(new Date(dateFilter.start || new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(dateFilter.end || new Date()), "end"),
                     },
                 },
             }),
@@ -52,18 +52,21 @@ export const dashboardPostModel = async (params) => {
                 where: {
                     alliance_top_up_request_status: "APPROVED",
                     alliance_top_up_request_date_updated: {
-                        gte: startDate,
-                        lte: endDate,
+                        gte: getPhilippinesTime(new Date(dateFilter.start || new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(dateFilter.end || new Date()), "end"),
                     },
                 },
             }),
             tx.alliance_withdrawal_request_table.aggregate({
-                _sum: { alliance_withdrawal_request_amount: true },
+                _sum: {
+                    alliance_withdrawal_request_amount: true,
+                    alliance_withdrawal_request_fee: true,
+                },
                 where: {
                     alliance_withdrawal_request_status: "APPROVED",
                     alliance_withdrawal_request_date_updated: {
-                        gte: startDate,
-                        lte: endDate,
+                        gte: getPhilippinesTime(new Date(dateFilter.start || new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(dateFilter.end || new Date()), "end"),
                     },
                 },
             }),
@@ -72,43 +75,43 @@ export const dashboardPostModel = async (params) => {
                 _sum: { package_ally_bounty_earnings: true },
                 where: {
                     package_ally_bounty_log_date_created: {
-                        gte: startDate,
-                        lte: endDate,
+                        gte: getPhilippinesTime(new Date(dateFilter.start || new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(dateFilter.end || new Date()), "end"),
                     },
                 },
             }),
             tx.package_member_connection_table.count({
                 where: {
                     package_member_connection_created: {
-                        gte: startDate,
-                        lte: endDate,
+                        gte: getPhilippinesTime(new Date(dateFilter.start || new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(dateFilter.end || new Date()), "end"),
                     },
                 },
             }),
             tx.$queryRaw `
-        WITH daily_earnings AS (
-          SELECT DATE_TRUNC('day', alliance_top_up_request_date_updated) AS date,
-                 SUM(COALESCE(alliance_top_up_request_amount, 0)) AS earnings
-          FROM alliance_schema.alliance_top_up_request_table
-          WHERE alliance_top_up_request_date_updated BETWEEN ${startDate}::timestamptz AND ${endDate}::timestamptz
-          AND alliance_top_up_request_status = 'APPROVED'
-          GROUP BY DATE_TRUNC('day', alliance_top_up_request_date_updated)
-        ),
-        daily_withdraw AS (
-          SELECT DATE_TRUNC('day', alliance_withdrawal_request_date_updated) AS date,
-                 SUM(COALESCE(alliance_withdrawal_request_amount, 0) - COALESCE(alliance_withdrawal_request_fee, 0)) AS withdraw
-          FROM alliance_schema.alliance_withdrawal_request_table
-          WHERE alliance_withdrawal_request_date_updated BETWEEN ${startDate}::timestamptz AND ${endDate}::timestamptz
-          AND alliance_withdrawal_request_status = 'APPROVED'
-          GROUP BY DATE_TRUNC('day', alliance_withdrawal_request_date_updated)
-        )
-        SELECT COALESCE(e.date, w.date) AS date,
-               COALESCE(e.earnings, 0) AS earnings,
-               COALESCE(w.withdraw, 0) AS withdraw
-        FROM daily_earnings e
-        FULL OUTER JOIN daily_withdraw w ON e.date = w.date
-        ORDER BY date;
-      `,
+      WITH daily_earnings AS (
+        SELECT DATE_TRUNC('day', alliance_top_up_request_date_updated) AS date,
+               SUM(COALESCE(alliance_top_up_request_amount, 0)) AS earnings
+        FROM alliance_schema.alliance_top_up_request_table
+        WHERE alliance_top_up_request_date_updated BETWEEN ${new Date(startDate).toISOString()}::timestamptz AND ${new Date(endDate).toISOString()}::timestamptz
+        AND alliance_top_up_request_status = 'APPROVED'
+        GROUP BY DATE_TRUNC('day', alliance_top_up_request_date_updated)
+      ),
+      daily_withdraw AS (
+        SELECT DATE_TRUNC('day', alliance_withdrawal_request_date_updated) AS date,
+               SUM(COALESCE(alliance_withdrawal_request_amount, 0) - COALESCE(alliance_withdrawal_request_fee, 0)) AS withdraw
+        FROM alliance_schema.alliance_withdrawal_request_table
+        WHERE alliance_withdrawal_request_date_updated BETWEEN ${new Date(startDate).toISOString()}::timestamptz AND ${new Date(endDate).toISOString()}::timestamptz
+        AND alliance_withdrawal_request_status = 'APPROVED'
+        GROUP BY DATE_TRUNC('day', alliance_withdrawal_request_date_updated)
+      )
+      SELECT COALESCE(e.date, w.date) AS date,
+             COALESCE(e.earnings, 0) AS earnings,
+             COALESCE(w.withdraw, 0) AS withdraw
+      FROM daily_earnings e
+      FULL OUTER JOIN daily_withdraw w ON e.date = w.date
+      ORDER BY date;
+    `,
         ]);
         const directLoot = bountyEarnings.find((e) => e.package_ally_bounty_type === "DIRECT")?._sum
             .package_ally_bounty_earnings || 0;
@@ -119,9 +122,11 @@ export const dashboardPostModel = async (params) => {
             earnings: row.earnings || 0,
             withdraw: row.withdraw || 0,
         }));
+        console.log(chartData);
         return {
-            totalEarnings: totalEarnings._sum.alliance_top_up_request_amount || 0,
-            totalWithdraw: totalWithdraw._sum.alliance_withdrawal_request_amount || 0,
+            totalEarnings: totalEarnings._sum.alliance_top_up_request_amount ?? 0,
+            totalWithdraw: (totalWithdraw._sum.alliance_withdrawal_request_amount ?? 0) -
+                (totalWithdraw._sum.alliance_withdrawal_request_fee ?? 0),
             directLoot,
             indirectLoot,
             packageEarnings: (packageEarnings._sum.package_member_amount || 0) +

@@ -50,3 +50,21 @@ export const calculateFee = (
   }
   return 0;
 };
+
+export const getPhilippinesTime = (
+  date: Date,
+  time: "start" | "end"
+): string => {
+  const philippinesOffset = 8 * 60 * 60 * 1000;
+  const adjustedDate = new Date(date.getTime() + philippinesOffset);
+
+  if (time === "start") {
+    adjustedDate.setUTCHours(0, 0, 0, 0);
+  } else {
+    adjustedDate.setUTCHours(23, 59, 59, 999);
+  }
+
+  const resultDate = new Date(adjustedDate.getTime() - philippinesOffset);
+
+  return resultDate.toISOString();
+};

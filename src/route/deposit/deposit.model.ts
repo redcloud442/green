@@ -1,6 +1,7 @@
 import type { ReturnDataType, TopUpRequestData } from "@/utils/types.js";
 import { Prisma, type alliance_member_table } from "@prisma/client";
 import { type DepositFormValues } from "../../schema/schema.js";
+import { getPhilippinesTime } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 
 export const depositPostModel = async (params: {
@@ -323,12 +324,21 @@ export const depositListPostModel = async (
   }
 
   if (dateFilter?.start && dateFilter?.end) {
-    const startDate = new Date(dateFilter.start).toISOString();
-    const endDate = new Date(dateFilter.end).toISOString();
+    const startDate = getPhilippinesTime(
+      new Date(dateFilter.start || new Date()),
+      "start"
+    );
+
+    const endDate = getPhilippinesTime(
+      new Date(dateFilter.end || new Date()),
+      "end"
+    );
+
+    console.log(startDate, endDate);
 
     commonConditions.push(
       Prisma.raw(
-        `t.alliance_top_up_request_date::DATE BETWEEN '${startDate}'::DATE AND '${endDate}'::DATE`
+        `t.alliance_top_up_request_date_updated::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`
       )
     );
   }
