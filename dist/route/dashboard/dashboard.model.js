@@ -143,7 +143,7 @@ export const dashboardPostModel = async (params) => {
             totalActivatedUserByDate,
             activePackageWithinTheDay,
             chartData,
-            reinvestorsCount,
+            reinvestorsCount: Number(reinvestorsCount),
         };
     });
 };

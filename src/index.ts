@@ -142,9 +142,11 @@ io.on("connection", async (socket) => {
       return socket.emit("error", "Too Many Requests");
     }
 
-    await prisma.chat_message_table.create({ data: { ...message } });
+    const data = await prisma.chat_message_table.create({
+      data: { ...message },
+    });
 
-    io.to(message.chat_message_session_id).emit("newMessage", message);
+    io.to(data.chat_message_session_id).emit("newMessage", message);
   });
 
   socket.on("endSupport", async (sessionId) => {
