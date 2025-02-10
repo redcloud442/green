@@ -10,7 +10,7 @@ export const dashboardPostModel = async (params) => {
         const endDate = dateFilter.end
             ? getPhilippinesTime(new Date(dateFilter.end), "end")
             : getPhilippinesTime(new Date(), "end");
-        const [totalEarnings, packageEarnings, totalActivatedUserByDate, totalApprovedWithdrawal, totalApprovedReceipts, totalWithdraw, bountyEarnings, activePackageWithinTheDay, chartDataRaw,] = await Promise.all([
+        const [totalEarnings, packageEarnings, totalActivatedUserByDate, totalApprovedWithdrawal, totalApprovedReceipts, totalWithdraw, bountyEarnings, activePackageWithinTheDay, chartDataRaw, reinvestorsCount,] = await Promise.all([
             tx.alliance_top_up_request_table.aggregate({
                 _sum: { alliance_top_up_request_amount: true },
                 where: {
@@ -93,7 +93,7 @@ export const dashboardPostModel = async (params) => {
         SELECT DATE_TRUNC('day', alliance_top_up_request_date_updated) AS date,
                SUM(COALESCE(alliance_top_up_request_amount, 0)) AS earnings
         FROM alliance_schema.alliance_top_up_request_table
-        WHERE alliance_top_up_request_date_updated BETWEEN ${new Date(startDate).toISOString()}::timestamptz AND ${new Date(endDate).toISOString()}::timestamptz
+        WHERE alliance_top_up_request_date_updated BETWEEN ${new Date(startDate || new Date()).toISOString()}::timestamptz AND ${new Date(endDate || new Date()).toISOString()}::timestamptz
         AND alliance_top_up_request_status = 'APPROVED'
         GROUP BY DATE_TRUNC('day', alliance_top_up_request_date_updated)
       ),
@@ -111,6 +111,14 @@ export const dashboardPostModel = async (params) => {
       FROM daily_earnings e
       FULL OUTER JOIN daily_withdraw w ON e.date = w.date
       ORDER BY date;
+    `,
+            tx.$queryRaw `
+      SELECT COUNT(DISTINCT pml.package_member_member_id) AS reinvestorsCount
+      FROM packages_schema.package_earnings_log pel
+      INNER JOIN alliance_schema.alliance_member_table am ON pel.package_member_member_id = am.alliance_member_id
+      INNER JOIN packages_schema.package_member_connection_table pml ON pel.package_member_member_id = pml.package_member_member_id
+      WHERE pml.package_member_connection_created 
+      BETWEEN ${new Date(startDate || new Date()).toISOString()}::timestamptz AND ${new Date(endDate || new Date()).toISOString()}::timestamptz
     `,
         ]);
         const directLoot = bountyEarnings.find((e) => e.package_ally_bounty_type === "DIRECT")?._sum
@@ -135,6 +143,7 @@ export const dashboardPostModel = async (params) => {
             totalActivatedUserByDate,
             activePackageWithinTheDay,
             chartData,
+            reinvestorsCount,
         };
     });
 };

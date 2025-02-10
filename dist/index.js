@@ -122,6 +122,7 @@ io.on("connection", async (socket) => {
                 chat_message_sender_user: "Chat Support",
             },
         });
+        socket.leave(sessionId);
         io.to(sessionId).emit("endSupport", { sessionId, messages });
     });
     socket.on("disconnect", () => { });
