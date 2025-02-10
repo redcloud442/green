@@ -77,6 +77,7 @@ io.use((socket, next) => {
 
 io.on("connection", async (socket) => {
   socket.on("joinRoom", async ({ roomId }) => {
+    console.log("joinRoom", roomId);
     const teamMemberProfile = socket.data.teamMemberProfile;
     socket.join(roomId);
 
