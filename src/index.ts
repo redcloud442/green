@@ -146,6 +146,7 @@ io.on("connection", async (socket) => {
     const data = await prisma.chat_message_table.create({
       data: { ...message },
     });
+    console.log("data", data);
 
     io.to(data.chat_message_session_id).emit("newMessage", message);
   });
@@ -174,7 +175,9 @@ io.on("connection", async (socket) => {
     io.to(sessionId).emit("endSupport", { sessionId, messages });
   });
 
-  socket.on("disconnect", () => {});
+  socket.on("disconnect", () => {
+    console.log("disconnect");
+  });
 });
 
 export default io;
