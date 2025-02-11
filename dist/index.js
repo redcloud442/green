@@ -55,6 +55,7 @@ io.use((socket, next) => {
 });
 io.on("connection", async (socket) => {
     socket.on("joinRoom", async ({ roomId }) => {
+        console.log("joinRoom", roomId);
         const teamMemberProfile = socket.data.teamMemberProfile;
         socket.join(roomId);
         if (teamMemberProfile?.alliance_member_role === "ADMIN") {
@@ -104,8 +105,11 @@ io.on("connection", async (socket) => {
         if (!isAllowed) {
             return socket.emit("error", "Too Many Requests");
         }
-        await prisma.chat_message_table.create({ data: { ...message } });
-        io.to(message.chat_message_session_id).emit("newMessage", message);
+        const data = await prisma.chat_message_table.create({
+            data: { ...message },
+        });
+        console.log("data", data);
+        io.to(data.chat_message_session_id).emit("newMessage", message);
     });
     socket.on("endSupport", async (sessionId) => {
         await prisma.chat_session_table.update({
@@ -125,7 +129,9 @@ io.on("connection", async (socket) => {
         socket.leave(sessionId);
         io.to(sessionId).emit("endSupport", { sessionId, messages });
     });
-    socket.on("disconnect", () => { });
+    socket.on("disconnect", () => {
+        console.log("disconnect");
+    });
 });
 export default io;
 console.log(`Server is running on port ${envConfig.PORT}`);
