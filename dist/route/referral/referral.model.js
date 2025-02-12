@@ -182,7 +182,7 @@ export const referralTotalGetModel = async (params) => {
       GROUP BY package_ally_bounty_member_id
     `;
         return {
-            data: result.totalamount,
+            data: result ? result.totalamount || 0 : 0, // Proper fallback to 0
         };
     });
 };

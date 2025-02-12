@@ -51,6 +51,7 @@ export const referralTotalGetController = async (c) => {
         return c.json({ message: "Data fetched successfully", data });
     }
     catch (error) {
+        console.log(error);
         return sendErrorResponse("Internal Server Error", 500);
     }
 };
