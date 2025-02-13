@@ -686,8 +686,6 @@ export const userListReinvestedModel = async (params: {
 }) => {
   const { dateFilter, take, skip } = params;
 
-  const { start, end } = dateFilter;
-
   const offset = (skip - 1) * take;
 
   const startDate = dateFilter.start
