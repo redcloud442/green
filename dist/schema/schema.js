@@ -88,6 +88,14 @@ export const depositListPostSchema = z.object({
     })
         .optional(),
 });
+export const depositReportPostSchema = z.object({
+    dateFilter: z
+        .object({
+        month: z.string().optional(),
+        year: z.string().optional(),
+    })
+        .optional(),
+});
 //user schema
 export const userSchemaPut = z.object({
     email: z.string().email(),
@@ -156,6 +164,14 @@ export const userProfileDataSchema = z
 }, {
     message: "Invalid value for the selected type.",
     path: ["value"], // Highlight the error on the value field
+});
+export const userListReinvestedSchema = z.object({
+    dateFilter: z.object({
+        start: z.string().optional().nullable(),
+        end: z.string().optional().nullable(),
+    }),
+    take: z.number().min(1).max(10),
+    skip: z.number().min(1),
 });
 //transaction schema
 export const transactionSchemaPost = z.object({

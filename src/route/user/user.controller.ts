@@ -4,6 +4,7 @@ import {
   userChangePasswordModel,
   userGenerateLinkModel,
   userListModel,
+  userListReinvestedModel,
   userModelGet,
   userModelPost,
   userModelPut,
@@ -160,6 +161,18 @@ export const userProfileDataPutController = async (c: Context) => {
     await userProfileDataPutModel(params);
 
     return c.json({ message: "Profile Data Updated" }, 200);
+  } catch (error) {
+    return c.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+};
+
+export const userListReinvestedController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    const data = await userListReinvestedModel(params);
+
+    return c.json(data, 200);
   } catch (error) {
     return c.json({ error: "Internal Server Error" }, { status: 500 });
   }

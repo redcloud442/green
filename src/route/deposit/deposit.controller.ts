@@ -5,6 +5,7 @@ import {
   depositListPostModel,
   depositPostModel,
   depositPutModel,
+  depositReportPostModel,
 } from "./deposit.model.js";
 
 export const depositPostController = async (c: Context) => {
@@ -73,6 +74,18 @@ export const depositListPostController = async (c: Context) => {
     const teamMemberProfile = c.get("teamMemberProfile");
 
     const data = await depositListPostModel(params, teamMemberProfile);
+
+    return c.json(data, { status: 200 });
+  } catch (e) {
+    return c.json({ message: "Internal Server Error" }, { status: 500 });
+  }
+};
+
+export const depositReportPostController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    const data = await depositReportPostModel(params);
 
     return c.json(data, { status: 200 });
   } catch (e) {

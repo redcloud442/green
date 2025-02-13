@@ -4,12 +4,14 @@ import {
   depositListPostController,
   depositPostController,
   depositPutController,
+  depositReportPostController,
 } from "./deposit.controller.js";
 import {
   depositHistoryPostMiddleware,
   depositListPostMiddleware,
   depositMiddleware,
   depositPutMiddleware,
+  depositReportPostMiddleware,
 } from "./deposit.middleware.js";
 
 const deposit = new Hono();
@@ -20,6 +22,12 @@ deposit.post(
   "/history",
   depositHistoryPostMiddleware,
   depositHistoryPostController
+);
+
+deposit.post(
+  "/report",
+  depositReportPostMiddleware,
+  depositReportPostController
 );
 
 deposit.put("/:id", depositPutMiddleware, depositPutController);
