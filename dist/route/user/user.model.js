@@ -521,7 +521,6 @@ export const userProfileDataPutModel = async (params) => {
 };
 export const userListReinvestedModel = async (params) => {
     const { dateFilter, take, skip } = params;
-    const { start, end } = dateFilter;
     const offset = (skip - 1) * take;
     const startDate = dateFilter.start
         ? new Date(getPhilippinesTime(new Date(dateFilter.start), "start")).toISOString()

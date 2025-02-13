@@ -328,7 +328,6 @@ export const userListReinvestedMiddleware = async (c, next) => {
         skip,
     });
     if (!validate.success) {
-        console.log(validate.error);
         return sendErrorResponse("Invalid Request", 400);
     }
     c.set("params", validate.data);

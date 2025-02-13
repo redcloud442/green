@@ -210,13 +210,19 @@ WHERE pml.package_member_status = 'ACTIVE'
     ).toISOString()}::timestamptz AND ${new Date(
         endDate || new Date()
       ).toISOString()}::timestamptz
-    AND EXISTS (
-        SELECT 1 
-        FROM packages_schema.package_member_connection_table past_pml
-        WHERE past_pml.package_member_member_id = pml.package_member_member_id
-          AND past_pml.package_member_connection_created < pml.package_member_connection_created
-    )
-
+      AND (
+                pml.package_member_connection_created > (
+                    SELECT MAX(past_pml.package_member_connection_created)
+                    FROM packages_schema.package_member_connection_table past_pml
+                    WHERE past_pml.package_member_member_id = pml.package_member_member_id
+                )
+                OR EXISTS (
+                    SELECT 1 
+                    FROM packages_schema.package_member_connection_table past_pml
+                    WHERE past_pml.package_member_member_id = pml.package_member_member_id
+                      AND past_pml.package_member_status = 'ENDED'
+                )
+            )
       `,
     ]);
 
