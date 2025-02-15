@@ -256,6 +256,7 @@ model alliance_transaction_table {
   @@schema("alliance_schema")
 }
 
+
 model package_table {
   package_id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   package_name       String

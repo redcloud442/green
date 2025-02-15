@@ -9,18 +9,6 @@ export const referralDirectModelPost = async (params) => {
         return cachedData;
     }
     const offset = Math.max((page - 1) * limit, 0);
-    const sortBy = isAscendingSort ? "ASC" : "DESC";
-    const directReferrals = await prisma.alliance_referral_table.findMany({
-        where: {
-            alliance_referral_from_member_id: teamMemberProfile.alliance_member_id,
-        },
-        select: { alliance_referral_member_id: true },
-    });
-    const directReferralIds = directReferrals.map((ref) => ref.alliance_referral_member_id);
-    if (directReferralIds.length === 0) {
-        return { data: [], totalCount: 0 };
-    }
-    // Parameterize search conditions to prevent SQL injection
     const searchCondition = search
         ? Prisma.raw(`AND (u.user_first_name ILIKE ${"%" + search + "%"} OR u.user_last_name ILIKE ${"%" + search + "%"} OR u.user_username ILIKE ${"%" + search + "%"})`)
         : Prisma.empty;
@@ -34,26 +22,24 @@ export const referralDirectModelPost = async (params) => {
     FROM alliance_schema.alliance_member_table m
     JOIN user_schema.user_table u ON u.user_id = m.alliance_member_user_id
     JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
-    WHERE pa.package_ally_bounty_from = ANY(${directReferralIds}::uuid[])
-      AND pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
+    WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
       ${searchCondition}
     GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
     ORDER BY pa.package_ally_bounty_log_date_created DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
     const totalCount = await prisma.$queryRaw `
-    SELECT COUNT(*)
-    FROM (
-      SELECT m.alliance_member_id
-      FROM alliance_schema.alliance_member_table m
-      JOIN user_schema.user_table u ON u.user_id = m.alliance_member_user_id
-      JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
-      WHERE pa.package_ally_bounty_from = ANY(${directReferralIds}::uuid[])
-        AND pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
-        ${searchCondition}
-      GROUP BY m.alliance_member_id, u.user_first_name, u.user_last_name, u.user_username, u.user_date_created
-    ) AS subquery
-  `;
+SELECT COUNT(*) AS total_count
+ FROM (
+     SELECT 1
+     FROM alliance_schema.alliance_member_table m
+     JOIN user_schema.user_table u ON u.user_id = m.alliance_member_user_id
+     JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
+     WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
+       ${searchCondition}
+     GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
+ ) AS subquery;
+`;
     const returnData = {
         data: direct,
         totalCount: Number(totalCount[0]?.count || 0),
