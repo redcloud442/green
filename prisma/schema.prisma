@@ -35,6 +35,7 @@ model user_table {
   user_password         String
   user_active_mobile    String?
   user_profile_picture  String?
+  user_bot_field        String?
 
   alliance_member_table alliance_member_table[]
   user_history_log  user_history_log[]

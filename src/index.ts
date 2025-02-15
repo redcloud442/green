@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server";
 import { createServerClient, parseCookieHeader } from "@supabase/ssr";
+import { Redis } from "@upstash/redis";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -73,6 +74,16 @@ io.use((socket, next) => {
 
     next();
   });
+});
+
+const redisPub = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+const redisSub = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
 io.on("connection", async (socket) => {

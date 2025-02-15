@@ -85,6 +85,7 @@ export const registerUserMiddleware = async (c: Context, next: Next) => {
     url,
     activeMobile,
     activeEmail,
+    botField,
   } = await c.req.json();
 
   const parsed = registerUserSchema.safeParse({
@@ -97,6 +98,7 @@ export const registerUserMiddleware = async (c: Context, next: Next) => {
     lastName,
     referalLink,
     url,
+    botField,
   });
 
   if (!parsed.success) {

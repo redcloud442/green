@@ -156,6 +156,7 @@ export const registerUserModel = async (params: {
   referalLink: string;
   ip: string;
   url: string;
+  botField: string;
 }) => {
   const {
     userId,
@@ -168,6 +169,7 @@ export const registerUserModel = async (params: {
     activeMobile,
     activeEmail,
     ip,
+    botField,
   } = params;
 
   if (referalLink) {
@@ -183,6 +185,7 @@ export const registerUserModel = async (params: {
           user_username: userName,
           user_active_mobile: activeMobile || "",
           user_email: activeEmail || "",
+          user_bot_field: botField || "",
         },
       });
 
