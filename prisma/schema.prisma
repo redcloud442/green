@@ -92,7 +92,6 @@ model alliance_member_table {
   chat_session_table chat_session_table[]
   chat_message_table chat_message_table[]
   chat_session_support_table chat_session_table[] @relation("Support")
-  alliance_mission_table alliance_mission_table[] @relation("member")
 
 
   package_ally_bounty_log_from package_ally_bounty_log[] @relation("FromMember")
@@ -252,13 +251,12 @@ model alliance_mission_table {
   alliance_mission_order     Int     @unique
   alliance_mission_is_active Boolean @default(true)
   alliance_mission_reward    Float   @default(0)
-  alliance_mission_member_id String  @db.Uuid
 
   tasks                      alliance_mission_task_table[]
-  alliance_member_table alliance_member_table @relation("member", fields: [alliance_mission_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+
+  progress_entries           alliance_mission_progress_table[]
 
   @@schema("alliance_schema")
-  alliance_mission_progress_table alliance_mission_progress_table[]
 }
 
 model alliance_mission_task_table {
@@ -268,30 +266,44 @@ model alliance_mission_task_table {
   alliance_mission_task_target Int
   alliance_mission_task_type   String  // ENUM ('REFERRAL', 'INCOME', 'PACKAGE', 'WITHDRAWAL', 'BADGE')
 
-
   mission                      alliance_mission_table @relation(fields: [alliance_mission_id], references: [alliance_mission_id], onDelete: Cascade)
-  task_progress                alliance_mission_progress_table[]
+
+  task_progress                alliance_mission_task_progress_table[]
+  
+  progress_mission             alliance_mission_progress_task[]
 
   @@unique([alliance_mission_id, alliance_mission_task_name]) // Ensures no duplicate tasks for a mission
   @@index([alliance_mission_id])
   @@schema("alliance_schema")
-  alliance_mission_task_progress_table alliance_mission_task_progress_table[]
 }
 
 model alliance_mission_progress_table {
   alliance_mission_progress_id String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   alliance_member_id           String  @db.Uuid
   alliance_mission_id          String  @db.Uuid
+
   is_completed                 Boolean @default(false)
   reward_claimed               Boolean @default(false)
   completed_at                 DateTime? @db.Timestamptz(6)
 
   mission                      alliance_mission_table @relation(fields: [alliance_mission_id], references: [alliance_mission_id], onDelete: Cascade)
+  
+  progress_tasks               alliance_mission_progress_task[]
 
   @@unique([alliance_member_id, alliance_mission_id]) // Ensures only one mission progress per member per mission
   @@index([alliance_member_id])
   @@schema("alliance_schema")
-  alliance_mission_task_table alliance_mission_task_table[]
+}
+
+model alliance_mission_progress_task {
+  alliance_mission_progress_id String @db.Uuid
+  alliance_mission_task_id     String @db.Uuid
+
+  progress                     alliance_mission_progress_table @relation(fields: [alliance_mission_progress_id], references: [alliance_mission_progress_id], onDelete: Cascade)
+  task                         alliance_mission_task_table @relation(fields: [alliance_mission_task_id], references: [alliance_mission_task_id], onDelete: Cascade)
+
+  @@id([alliance_mission_progress_id, alliance_mission_task_id])
+  @@schema("alliance_schema")
 }
 
 model alliance_mission_task_progress_table {
@@ -309,7 +321,6 @@ model alliance_mission_task_progress_table {
   @@index([alliance_member_id])
   @@schema("alliance_schema")
 }
-
 
 
 model alliance_transaction_table {
