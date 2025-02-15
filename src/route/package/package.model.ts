@@ -68,6 +68,8 @@ export const packagePostModel = async (params: {
     olympusEarnings,
     referralWallet,
     updatedCombinedWallet,
+    isReinvestment,
+    reinvestmentAmount,
   } = deductFromWallets(
     requestedAmount,
     combinedEarnings,
@@ -107,6 +109,8 @@ export const packagePostModel = async (params: {
         package_member_completion_date: new Date(
           Date.now() + packageData.packages_days * 24 * 60 * 60 * 1000
         ),
+        package_member_is_reinvestment: isReinvestment,
+        package_member_reinvestment_amount: reinvestmentAmount,
       },
     });
 
@@ -598,7 +602,8 @@ function deductFromWallets(
   referralWallet: number
 ) {
   let remaining = amount;
-
+  let isReinvestment = false;
+  let reinvestmentAmount = 0;
   // Validate total funds
   if (combinedWallet < amount) {
     throw new Error("Insufficient balance in combined wallet.");
@@ -616,6 +621,9 @@ function deductFromWallets(
   // Deduct from Olympus Earnings next
   if (remaining > 0) {
     if (olympusEarnings >= remaining) {
+      isReinvestment = true;
+      reinvestmentAmount = remaining;
+
       olympusEarnings -= remaining;
       remaining = 0;
     } else {
@@ -645,6 +653,8 @@ function deductFromWallets(
     olympusWallet,
     olympusEarnings,
     referralWallet,
+    isReinvestment,
+    reinvestmentAmount,
     updatedCombinedWallet: combinedWallet - amount,
   };
 }
