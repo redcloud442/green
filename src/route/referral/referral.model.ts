@@ -57,7 +57,7 @@ export const referralDirectModelPost = async (params: {
   `;
 
   const totalCount: { count: number }[] = await prisma.$queryRaw`
-    SELECT COUNT(*) AS total_count
+    SELECT COUNT(*) AS count
     FROM (
         SELECT 1
         FROM alliance_schema.alliance_member_table m
