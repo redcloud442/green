@@ -110,7 +110,6 @@ export const packagePostModel = async (params: {
           Date.now() + packageData.packages_days * 24 * 60 * 60 * 1000
         ),
         package_member_is_reinvestment: isReinvestment,
-        package_member_reinvestment_amount: reinvestmentAmount,
       },
     });
 

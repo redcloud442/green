@@ -251,7 +251,7 @@ export const dashboardPostModel = async (params: {
       totalActivatedUserByDate,
       activePackageWithinTheDay,
       chartData,
-      reinvestorsCount: Number(data?._count.package_member_connection_id || 0),
+      reinvestorsCount: Number(data?._count.package_member_member_id || 0),
       totalReinvestmentAmount: Number(data?._sum.package_member_amount || 0),
     };
   });
