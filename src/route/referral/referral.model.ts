@@ -56,10 +56,6 @@ export const referralDirectModelPost = async (params: {
       )
     : Prisma.empty;
 
-  const sortCondition = columnAccessor
-    ? Prisma.raw(`ORDER BY ${columnAccessor} ${sortBy}`)
-    : Prisma.empty;
-
   const direct = await prisma.$queryRaw`
     SELECT
       u.user_first_name,
