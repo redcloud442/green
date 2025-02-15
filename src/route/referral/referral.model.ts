@@ -19,33 +19,16 @@ export const referralDirectModelPost = async (params: {
     teamMemberProfile,
   } = params;
 
-  const cacheKey = `referral-direct-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}`;
+  // const cacheKey = `referral-direct-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}`;
 
-  const cachedData = await redis.get(cacheKey);
+  // const cachedData = await redis.get(cacheKey);
 
-  if (cachedData) {
-    return cachedData;
-  }
+  // if (cachedData) {
+  //   return cachedData;
+  // }
 
   const offset = Math.max((page - 1) * limit, 0);
-  const sortBy = isAscendingSort ? "ASC" : "DESC";
 
-  const directReferrals = await prisma.alliance_referral_table.findMany({
-    where: {
-      alliance_referral_from_member_id: teamMemberProfile.alliance_member_id,
-    },
-    select: { alliance_referral_member_id: true },
-  });
-
-  const directReferralIds = directReferrals.map(
-    (ref) => ref.alliance_referral_member_id
-  );
-
-  if (directReferralIds.length === 0) {
-    return { data: [], totalCount: 0 };
-  }
-
-  // Parameterize search conditions to prevent SQL injection
   const searchCondition = search
     ? Prisma.raw(
         `AND (u.user_first_name ILIKE ${
@@ -55,6 +38,8 @@ export const referralDirectModelPost = async (params: {
         } OR u.user_username ILIKE ${"%" + search + "%"})`
       )
     : Prisma.empty;
+
+  console.log(teamMemberProfile.alliance_member_id);
 
   const direct = await prisma.$queryRaw`
     SELECT
@@ -66,8 +51,7 @@ export const referralDirectModelPost = async (params: {
     FROM alliance_schema.alliance_member_table m
     JOIN user_schema.user_table u ON u.user_id = m.alliance_member_user_id
     JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
-    WHERE pa.package_ally_bounty_from = ANY(${directReferralIds}::uuid[])
-      AND pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
+    WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
       ${searchCondition}
     GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
     ORDER BY pa.package_ally_bounty_log_date_created DESC
@@ -76,16 +60,13 @@ export const referralDirectModelPost = async (params: {
 
   const totalCount: { count: number }[] = await prisma.$queryRaw`
     SELECT COUNT(*)
-    FROM (
-      SELECT m.alliance_member_id
-      FROM alliance_schema.alliance_member_table m
-      JOIN user_schema.user_table u ON u.user_id = m.alliance_member_user_id
-      JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
-      WHERE pa.package_ally_bounty_from = ANY(${directReferralIds}::uuid[])
-        AND pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
-        ${searchCondition}
-      GROUP BY m.alliance_member_id, u.user_first_name, u.user_last_name, u.user_username, u.user_date_created
-    ) AS subquery
+    FROM alliance_schema.alliance_member_table m
+    JOIN user_schema.user_table u ON u.user_id = m.alliance_member_user_id
+    JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
+    WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
+      ${searchCondition}
+    GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
+    ORDER BY pa.package_ally_bounty_log_date_created DESC
   `;
 
   const returnData = {
@@ -93,7 +74,7 @@ export const referralDirectModelPost = async (params: {
     totalCount: Number(totalCount[0]?.count || 0),
   };
 
-  await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
+  // await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
 
   return returnData;
 };

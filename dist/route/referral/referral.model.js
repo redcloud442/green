@@ -24,9 +24,6 @@ export const referralDirectModelPost = async (params) => {
     const searchCondition = search
         ? Prisma.raw(`AND (u.user_first_name ILIKE ${"%" + search + "%"} OR u.user_last_name ILIKE ${"%" + search + "%"} OR u.user_username ILIKE ${"%" + search + "%"})`)
         : Prisma.empty;
-    const sortCondition = columnAccessor
-        ? Prisma.raw(`ORDER BY ${columnAccessor} ${sortBy}`)
-        : Prisma.empty;
     const direct = await prisma.$queryRaw `
     SELECT
       u.user_first_name,
