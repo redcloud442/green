@@ -22,23 +22,23 @@ export const referralDirectModelPost = async (params) => {
     FROM alliance_schema.alliance_member_table m
     JOIN user_schema.user_table u ON u.user_id = m.alliance_member_user_id
     JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
-    WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
+    WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid AND pa.package_ally_bounty_type = 'DIRECT'
       ${searchCondition}
     GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
     ORDER BY pa.package_ally_bounty_log_date_created DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
     const totalCount = await prisma.$queryRaw `
-SELECT COUNT(*) AS total_count
- FROM (
-     SELECT 1
-     FROM alliance_schema.alliance_member_table m
-     JOIN user_schema.user_table u ON u.user_id = m.alliance_member_user_id
-     JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
-     WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
-       ${searchCondition}
-     GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
- ) AS subquery;
+    SELECT COUNT(*) AS count
+    FROM (
+        SELECT 1
+        FROM alliance_schema.alliance_member_table m
+        JOIN user_schema.user_table u ON u.user_id = m.alliance_member_user_id
+        JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
+        WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid AND pa.package_ally_bounty_type = 'DIRECT'
+          ${searchCondition}
+        GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
+    ) AS subquery;
 `;
     const returnData = {
         data: direct,
