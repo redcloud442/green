@@ -19,13 +19,13 @@ export const referralDirectModelPost = async (params: {
     teamMemberProfile,
   } = params;
 
-  // const cacheKey = `referral-direct-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}`;
+  const cacheKey = `referral-direct-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}`;
 
-  // const cachedData = await redis.get(cacheKey);
+  const cachedData = await redis.get(cacheKey);
 
-  // if (cachedData) {
-  //   return cachedData;
-  // }
+  if (cachedData) {
+    return cachedData;
+  }
 
   const offset = Math.max((page - 1) * limit, 0);
 
@@ -74,7 +74,7 @@ export const referralDirectModelPost = async (params: {
     totalCount: Number(totalCount[0]?.count || 0),
   };
 
-  // await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
+  await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
 
   return returnData;
 };
