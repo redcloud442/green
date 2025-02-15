@@ -200,10 +200,10 @@ export const dashboardPostModel = async (params: {
 
       tx.package_member_connection_table.aggregate({
         _sum: {
-          package_member_reinvestment_amount: true,
+          package_member_amount: true,
         },
         _count: {
-          package_member_connection_id: true,
+          package_member_member_id: true,
         },
         where: {
           package_member_is_reinvestment: true,
@@ -252,9 +252,7 @@ export const dashboardPostModel = async (params: {
       activePackageWithinTheDay,
       chartData,
       reinvestorsCount: Number(data?._count.package_member_connection_id || 0),
-      totalReinvestmentAmount: Number(
-        data?._sum.package_member_reinvestment_amount || 0
-      ),
+      totalReinvestmentAmount: Number(data?._sum.package_member_amount || 0),
     };
   });
 };

@@ -709,7 +709,7 @@ export const userListReinvestedModel = async (params: {
   }[] = await prisma.$queryRaw`
         SELECT 
           pml.package_member_member_id,
-          pml.package_member_reinvestment_amount,
+          pml.package_member_amount,
           pml.package_member_connection_created,
           pml.package_member_status,
           u.user_username,
@@ -730,7 +730,7 @@ export const userListReinvestedModel = async (params: {
   ).toISOString()}::timestamptz
       GROUP BY 
           pml.package_member_member_id, 
-          pml.package_member_reinvestment_amount, 
+          pml.package_member_amount, 
           pml.package_member_connection_created, 
           pml.package_member_status,
           u.user_username, 
@@ -761,7 +761,7 @@ export const userListReinvestedModel = async (params: {
   ).toISOString()}::timestamptz
           GROUP BY 
             pml.package_member_member_id, 
-            pml.package_member_reinvestment_amount, 
+            pml.package_member_amount, 
             pml.package_member_connection_created, 
             pml.package_member_status,
             u.user_username, 
