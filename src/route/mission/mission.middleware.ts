@@ -1,8 +1,8 @@
-import { sendErrorResponse } from "@/utils/function.js";
-import prisma from "@/utils/prisma.js";
-import { protectionMemberUser } from "@/utils/protection.js";
-import { rateLimit } from "@/utils/redis.js";
 import type { Context, Next } from "hono";
+import { sendErrorResponse } from "../../utils/function.js";
+import prisma from "../../utils/prisma.js";
+import { protectionMemberUser } from "../../utils/protection.js";
+import { rateLimit } from "../../utils/redis.js";
 
 export const missionMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
@@ -23,9 +23,7 @@ export const missionMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Too Many Requests", 429);
   }
 
-  c.set("params", {
-    teamMemberProfile,
-  });
+  c.set("teamMemberProfile", teamMemberProfile);
 
   return await next();
 };

@@ -83,7 +83,7 @@ app.use("/chat/*", protectionMiddleware);
 app.route("/chat", chat);
 
 //mission route
-// app.use("/mission/*", protectionMiddleware);
+app.use("/mission/*", protectionMiddleware);
 app.route("/mission", mission);
 
 app.get("/", (c) => c.text("This is the api endpoint"));

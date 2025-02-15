@@ -3,9 +3,9 @@ import { getMissions } from "./mission.model.js";
 
 export const missionController = async (c: Context) => {
   try {
-    const { allianceMemberId } = await c.req.json();
+    const { teamMemberProfile } = c.get("teamMemberProfile");
 
-    const mission = await getMissions({ allianceMemberId });
+    const mission = await getMissions({ teamMemberProfile });
 
     return c.json(mission);
   } catch (error) {

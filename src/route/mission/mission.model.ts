@@ -1,36 +1,56 @@
+import { getPhilippinesTime } from "@/utils/function.js";
 import prisma from "@/utils/prisma.js";
+import type { alliance_member_table } from "@prisma/client";
 
-export const getMissions = async (params: { allianceMemberId: string }) => {
-  const { allianceMemberId } = params;
+const rankMapping = [
+  { index: 1, threshold: 3, rank: "iron" },
+  { index: 2, threshold: 6, rank: "bronze" },
+  { index: 3, threshold: 10, rank: "silver" },
+  { index: 4, threshold: 20, rank: "gold" },
+  { index: 5, threshold: 50, rank: "platinum" },
+  { index: 6, threshold: 100, rank: "emerald" },
+  { index: 7, threshold: 150, rank: "ruby" },
+  { index: 8, threshold: 200, rank: "sapphire" },
+  { index: 9, threshold: 500, rank: "diamond" },
+];
 
-  // Find the current active mission where tasks are incomplete
+export const getMissions = async (params: {
+  teamMemberProfile: alliance_member_table;
+}) => {
+  const { teamMemberProfile } = params;
+  const allianceMemberId = teamMemberProfile.alliance_member_id;
+
   let missionProgress = await prisma.alliance_mission_progress_table.findFirst({
-    where: {
-      alliance_member_id: allianceMemberId,
-      is_completed: false,
-    },
+    where: { alliance_member_id: allianceMemberId, is_completed: false },
     include: {
       mission: {
         include: {
           tasks: {
             include: {
               task_progress: {
-                where: {
-                  alliance_member_id: allianceMemberId,
-                  is_completed: false, // Only fetch incomplete tasks
-                },
+                where: { alliance_member_id: allianceMemberId },
               },
             },
           },
         },
       },
     },
+    take: 1,
   });
 
-  // If no active mission, assign the user to the first mission
   if (!missionProgress) {
     const firstMission = await prisma.alliance_mission_table.findFirst({
       orderBy: { alliance_mission_order: "asc" },
+      where: {
+        alliance_mission_id: {
+          notIn: (
+            await prisma.alliance_mission_progress_table.findMany({
+              where: { alliance_member_id: allianceMemberId },
+              select: { alliance_mission_id: true },
+            })
+          ).map((progress) => progress.alliance_mission_id),
+        },
+      },
       take: 1,
     });
 
@@ -45,120 +65,165 @@ export const getMissions = async (params: { allianceMemberId: string }) => {
         include: {
           mission: {
             include: {
-              tasks: {
-                include: {
-                  task_progress: {
-                    where: {
-                      alliance_member_id: allianceMemberId,
-                      is_completed: false,
-                    },
-                  },
-                },
-              },
+              tasks: true,
             },
           },
         },
       });
+
+      if (missionProgress) {
+        await Promise.all(
+          missionProgress.mission.tasks.map(async (task) => {
+            await prisma.alliance_mission_task_progress_table.upsert({
+              where: {
+                alliance_member_id_alliance_mission_task_id: {
+                  alliance_member_id: allianceMemberId,
+                  alliance_mission_task_id: task.alliance_mission_task_id,
+                },
+              },
+              update: {},
+              create: {
+                alliance_member_id: allianceMemberId,
+                alliance_mission_task_id: task.alliance_mission_task_id,
+                progress_count: 0,
+                is_completed: false,
+              },
+            });
+          })
+        );
+      }
     }
   }
 
-  // If still null, return an empty response
   if (!missionProgress) return null;
 
   const { mission } = missionProgress;
+  const progressStartTime = getPhilippinesTime(
+    missionProgress.alliance_mission_progress_created,
+    "start"
+  );
 
-  // 🚀 Dynamic Task Checker
-  for (const task of mission.tasks) {
-    const taskProgress = task.task_progress[0] || { progress_count: 0 };
+  const [
+    packageAmount,
+    withdrawalCount,
+    directIncomeCount,
+    networkIncomeCount,
+    reinvestmentCount,
+    totalIncomeData,
+    referralCount,
+  ] = await Promise.all([
+    prisma.package_member_connection_table.aggregate({
+      where: {
+        package_member_member_id: allianceMemberId,
+        package_member_connection_created: { gte: progressStartTime },
+      },
+      _sum: { package_member_amount: true },
+    }),
+    prisma.alliance_withdrawal_request_table.count({
+      where: {
+        alliance_withdrawal_request_member_id: allianceMemberId,
+        alliance_withdrawal_request_date: { gte: progressStartTime },
+      },
+    }),
+    prisma.package_ally_bounty_log.count({
+      where: {
+        package_ally_bounty_member_id: allianceMemberId,
+        package_ally_bounty_type: "DIRECT",
+        package_ally_bounty_log_date_created: { gte: progressStartTime },
+      },
+    }),
+    prisma.package_ally_bounty_log.count({
+      where: {
+        package_ally_bounty_member_id: allianceMemberId,
+        package_ally_bounty_type: "INDIRECT",
+        package_ally_bounty_log_date_created: { gte: progressStartTime },
+      },
+    }),
+    prisma.package_member_connection_table.count({
+      where: {
+        package_member_member_id: allianceMemberId,
+        package_member_is_reinvestment: true,
+        package_member_connection_created: { gte: progressStartTime },
+      },
+    }),
+    prisma.dashboard_earnings_summary.findUnique({
+      where: { member_id: allianceMemberId },
+    }),
+    prisma.package_ally_bounty_log.count({
+      where: {
+        package_ally_bounty_member_id: allianceMemberId,
+        package_ally_bounty_type: "DIRECT",
+        package_ally_bounty_log_date_created: { gte: progressStartTime },
+      },
+    }),
+  ]);
 
-    if (!taskProgress.is_completed) {
-      if (task.alliance_mission_task_type === "PACKAGE") {
-        const packageAmount =
-          await prisma.package_member_connection_table.aggregate({
-            where: { package_member_member_id: allianceMemberId },
-            _sum: { package_member_amount: true },
-          });
+  const totalIncome = Number(totalIncomeData?.total_earnings || 0);
 
-        if (
-          (packageAmount?._sum?.package_member_amount ?? 0) >=
-          task.alliance_mission_task_target
-        ) {
-          await prisma.alliance_mission_task_progress_table.updateMany({
-            where: { alliance_mission_task_id: task.alliance_mission_task_id },
-            data: { is_completed: true },
-          });
-        }
+  const completedTaskIds = mission.tasks
+    .filter((task) => {
+      const taskTarget = task.alliance_mission_task_target;
+      switch (task.alliance_mission_task_type) {
+        case "PACKAGE":
+          return (
+            (packageAmount?._sum?.package_member_amount ?? 0) >= taskTarget
+          );
+        case "BADGE":
+          return rankMapping.some((r) => r.index >= taskTarget);
+        case "WITHDRAWAL":
+          return withdrawalCount >= taskTarget;
+        case "DIRECT INCOME":
+          return directIncomeCount >= taskTarget;
+        case "NETWORK INCOME":
+          return networkIncomeCount >= taskTarget;
+        case "REINVESTMENT PACKAGE":
+          return reinvestmentCount >= taskTarget;
+        case "TOTAL INCOME":
+          return totalIncome >= taskTarget;
+        case "REFERRAL":
+          return referralCount >= taskTarget;
+        default:
+          return false;
       }
+    })
+    .map((task) => task.alliance_mission_task_id);
 
-      if (task.alliance_mission_task_type === "BADGE") {
-        const allianceRanking = await prisma.alliance_ranking_table.findUnique({
-          where: { alliance_ranking_member_id: allianceMemberId },
-        });
-
-        if (allianceRanking?.alliance_rank) {
-          await prisma.alliance_mission_task_progress_table.updateMany({
-            where: { alliance_mission_task_id: task.alliance_mission_task_id },
-            data: { is_completed: true },
-          });
-        }
-      }
-
-      if (
-        task.alliance_mission_task_type === "WITHDRAWAL" &&
-        task.alliance_mission_task_target > 0
-      ) {
-        const withdrawalCount =
-          await prisma.alliance_withdrawal_request_table.count({
-            where: { alliance_withdrawal_request_member_id: allianceMemberId },
-          });
-
-        if (withdrawalCount >= task.alliance_mission_task_target) {
-          await prisma.alliance_mission_task_progress_table.updateMany({
-            where: { alliance_mission_task_id: task.alliance_mission_task_id },
-            data: { is_completed: true },
-          });
-        }
-      }
-
-      if (
-        task.alliance_mission_task_type === "REFERRAL" &&
-        task.alliance_mission_task_target > 0
-      ) {
-        const referralCount = await prisma.package_ally_bounty_log.count({
+  if (completedTaskIds.length > 0) {
+    await Promise.all(
+      completedTaskIds.map(async (taskId) => {
+        await prisma.alliance_mission_task_progress_table.upsert({
           where: {
-            package_ally_bounty_member_id: allianceMemberId,
-            package_ally_bounty_type: "DIRECT",
+            alliance_member_id_alliance_mission_task_id: {
+              alliance_member_id: allianceMemberId,
+              alliance_mission_task_id: taskId,
+            },
+          },
+          update: { is_completed: true, completed_at: new Date() },
+          create: {
+            alliance_member_id: allianceMemberId,
+            alliance_mission_task_id: taskId,
+            progress_count: 0,
+            is_completed: true,
+            completed_at: new Date(),
           },
         });
-
-        if (referralCount >= task.alliance_mission_task_target) {
-          await prisma.alliance_mission_task_progress_table.updateMany({
-            where: { alliance_mission_task_id: task.alliance_mission_task_id },
-            data: { is_completed: true },
-          });
-        }
-      }
-    }
+      })
+    );
   }
 
-  // Fetch only tasks that are still incomplete
-  const updatedTasks = mission.tasks
-    .map((task) => {
-      const taskProgress = task.task_progress[0] || { progress_count: 0 };
-      return {
-        task_id: task.alliance_mission_task_id,
-        task_name: task.alliance_mission_task_name,
-        task_target: task.alliance_mission_task_target,
-        task_type: task.alliance_mission_task_type,
-        progress: taskProgress.is_completed
-          ? task.alliance_mission_task_target
-          : 0,
-        is_completed: taskProgress.is_completed,
-      };
-    })
-    .filter((task) => !task.is_completed); // Remove completed tasks
+  const updatedTasks = mission.tasks.map((task) => {
+    const taskProgress = task.task_progress[0] || { progress_count: 0 };
+    return {
+      task_id: task.alliance_mission_task_id,
+      task_name: task.alliance_mission_task_name,
+      task_target: task.alliance_mission_task_target,
+      task_type: task.alliance_mission_task_type,
+      progress: taskProgress.progress_count,
+      is_completed: taskProgress.is_completed ?? false,
+    };
+  });
 
-  const isMissionCompleted = updatedTasks.length === 0;
+  const isMissionCompleted = updatedTasks.every((task) => task.is_completed);
 
   if (isMissionCompleted) {
     await prisma.alliance_mission_progress_table.update({
