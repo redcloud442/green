@@ -186,7 +186,11 @@ export const getMissions = async (params: {
           return false;
       }
     })
-    .map((task) => task.alliance_mission_task_id);
+    .map((task) => ({
+      taskId: task.alliance_mission_task_id,
+      progress:
+        task.task_progress.reduce((acc, tp) => acc + tp.progress_count, 0) || 0,
+    }));
 
   if (completedTaskIds.length > 0) {
     await Promise.all(
@@ -195,14 +199,14 @@ export const getMissions = async (params: {
           where: {
             alliance_member_id_alliance_mission_task_id: {
               alliance_member_id: allianceMemberId,
-              alliance_mission_task_id: taskId,
+              alliance_mission_task_id: taskId.taskId,
             },
           },
           update: { is_completed: true, completed_at: new Date() },
           create: {
             alliance_member_id: allianceMemberId,
-            alliance_mission_task_id: taskId,
-            progress_count: 0,
+            alliance_mission_task_id: taskId.taskId,
+            progress_count: taskId.progress,
             is_completed: true,
             completed_at: new Date(),
           },
@@ -212,28 +216,64 @@ export const getMissions = async (params: {
   }
 
   const updatedTasks = mission.tasks.map((task) => {
-    const taskProgress = task.task_progress[0] || { progress_count: 0 };
+    const taskProgress =
+      task.alliance_mission_task_type === "PACKAGE"
+        ? packageAmount?._sum?.package_member_amount ?? 0
+        : task.alliance_mission_task_type === "BADGE"
+        ? rankMapping.find((r) => r.index >= task.alliance_mission_task_target)
+            ?.rank
+        : task.alliance_mission_task_type === "WITHDRAWAL"
+        ? withdrawalCount
+        : task.alliance_mission_task_type === "DIRECT INCOME"
+        ? directIncomeCount
+        : task.alliance_mission_task_type === "NETWORK INCOME"
+        ? networkIncomeCount
+        : task.alliance_mission_task_type === "REINVESTMENT PACKAGE"
+        ? reinvestmentCount
+        : task.alliance_mission_task_type === "TOTAL INCOME"
+        ? totalIncome
+        : task.alliance_mission_task_type === "REFERRAL"
+        ? referralCount
+        : task.task_progress.reduce((acc, tp) => acc + tp.progress_count, 0) ||
+          0;
+
+    const isCompleted = completedTaskIds.some(
+      ({ taskId }) => taskId === task.alliance_mission_task_id
+    );
     return {
       task_id: task.alliance_mission_task_id,
       task_name: task.alliance_mission_task_name,
-      task_target: task.alliance_mission_task_target,
+      task_target:
+        task.alliance_mission_task_type === "BADGE" &&
+        task.alliance_mission_task_target === 1
+          ? "iron"
+          : task.alliance_mission_task_target,
       task_type: task.alliance_mission_task_type,
-      progress: taskProgress.progress_count,
-      is_completed: taskProgress.is_completed ?? false,
+      progress: taskProgress,
+      task_to_achieve:
+        task.alliance_mission_task_type === "BADGE" &&
+        task.alliance_mission_task_target === 1
+          ? "iron"
+          : task.alliance_mission_task_target &&
+            task.alliance_mission_task_type === "BADGE" &&
+            task.alliance_mission_task_target === 2
+          ? "bronze"
+          : task.alliance_mission_task_target,
+      is_completed: isCompleted,
     };
   });
 
   const isMissionCompleted = updatedTasks.every((task) => task.is_completed);
 
-  if (isMissionCompleted) {
-    await prisma.alliance_mission_progress_table.update({
-      where: {
-        alliance_mission_progress_id:
-          missionProgress.alliance_mission_progress_id,
-      },
-      data: { is_completed: true },
-    });
-  }
+  // if (isMissionCompleted) {
+  //   await prisma.alliance_mission_progress_table.update({
+  //     where: {
+  //       alliance_mission_progress_id:
+  //         missionProgress.alliance_mission_progress_id,
+  //     },
+  //     data: { is_completed: true },
+  //   });
+  // }
 
   return {
     mission_id: mission.alliance_mission_id,
