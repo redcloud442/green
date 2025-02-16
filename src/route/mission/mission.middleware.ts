@@ -27,3 +27,27 @@ export const missionMiddleware = async (c: Context, next: Next) => {
 
   return await next();
 };
+
+export const missionPostMiddleware = async (c: Context, next: Next) => {
+  const user = c.get("user");
+
+  const teamMemberProfile = await protectionMemberUser(user.id, prisma);
+
+  if (!teamMemberProfile) {
+    return sendErrorResponse("Unauthorized", 401);
+  }
+
+  const isAllowed = await rateLimit(
+    `rate-limit:${user.id}:mission-post`,
+    10,
+    60
+  );
+
+  if (!isAllowed) {
+    return sendErrorResponse("Too Many Requests", 429);
+  }
+
+  c.set("teamMemberProfile", teamMemberProfile);
+
+  return await next();
+};
