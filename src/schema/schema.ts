@@ -61,7 +61,7 @@ export const registerUserSchema = z.object({
   password: z.string().min(6),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
-
+  botField: z.string().optional(),
   referalLink: z.string().min(2),
   url: z.string().min(2),
 });
