@@ -45,10 +45,6 @@ export const getMissions = async (params: {
     take: 1,
   });
 
-  if (missionProgress === null) {
-    return { allMissionCompleted: true };
-  }
-
   if (!missionProgress) {
     const firstMission = await prisma.alliance_mission_table.findFirst({
       orderBy: { alliance_mission_order: "asc" },
@@ -104,6 +100,9 @@ export const getMissions = async (params: {
         );
       }
     }
+  }
+  if (missionProgress === null) {
+    return { allMissionCompleted: true };
   }
 
   if (!missionProgress) return null;
@@ -331,7 +330,7 @@ export const getMissions = async (params: {
     const isCompleted = completedTaskIds.some(
       ({ taskId }) => taskId === task.alliance_mission_task_id
     );
-    console.log(allianceMemberId);
+
     return {
       task_id: task.alliance_mission_task_id,
       task_name: task.alliance_mission_task_name,
