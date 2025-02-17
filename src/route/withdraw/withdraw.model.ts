@@ -49,7 +49,7 @@ export const withdrawModel = async (params: {
 
   if (existingPackageWithdrawal) {
     throw new Error(
-      "You have already made a PACKAGE withdrawal today. Please try again tomorrow."
+      `You have already made a ${earnings} withdrawal today. Please try again tomorrow.`
     );
   }
 
@@ -81,7 +81,8 @@ export const withdrawModel = async (params: {
       ? "alliance_withdrawal_request_earnings_amount"
       : "alliance_withdrawal_request_referral_amount";
 
-  const earningsValue = Math.round(Number(earningsType) * 100) / 100;
+  const earningsValue =
+    Math.round(Number(amountMatch[earningsType]) * 100) / 100;
 
   if (amountValue > earningsValue) {
     throw new Error("Insufficient balance.");

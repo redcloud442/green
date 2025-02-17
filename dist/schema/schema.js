@@ -411,3 +411,7 @@ export const chatMessageSchema = z.object({
         message: "Invalid timestamp format",
     }),
 });
+//mission schema
+export const missionPostSchema = z.object({
+    missionId: z.string().uuid(),
+});
