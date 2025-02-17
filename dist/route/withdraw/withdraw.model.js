@@ -19,7 +19,7 @@ export const withdrawModel = async (params) => {
         },
     });
     if (existingPackageWithdrawal) {
-        throw new Error("You have already made a PACKAGE withdrawal today. Please try again tomorrow.");
+        throw new Error(`You have already made a ${earnings} withdrawal today. Please try again tomorrow.`);
     }
     const amountMatch = await prisma.alliance_earnings_table.findUnique({
         where: {
@@ -42,7 +42,7 @@ export const withdrawModel = async (params) => {
     const earningsWithdrawalType = earnings === "PACKAGE"
         ? "alliance_withdrawal_request_earnings_amount"
         : "alliance_withdrawal_request_referral_amount";
-    const earningsValue = Math.round(Number(earningsType) * 100) / 100;
+    const earningsValue = Math.round(Number(amountMatch[earningsType]) * 100) / 100;
     if (amountValue > earningsValue) {
         throw new Error("Insufficient balance.");
     }
@@ -54,9 +54,6 @@ export const withdrawModel = async (params) => {
     if (earnings === "REFERRAL") {
         const referralDeduction = Math.min(remainingAmount, Number(alliance_referral_bounty));
         remainingAmount -= referralDeduction;
-    }
-    if (remainingAmount > 0) {
-        throw new Error("Invalid request.");
     }
     const finalAmount = calculateFinalAmount(Number(amount), earnings);
     const fee = calculateFee(Number(amount), earnings);
@@ -91,29 +88,21 @@ export const withdrawModel = async (params) => {
                 alliance_withdrawal_request_approved_by: countAllRequests[0]?.approverId ?? null,
             },
         });
-        // Update the earnings
-        // Update the earnings
-        await tx.alliance_earnings_table.update({
-            where: {
-                alliance_earnings_member_id: teamMemberProfile.alliance_member_id,
-            },
+        await tx.$executeRaw(Prisma.sql `
+        UPDATE alliance_schema.alliance_earnings_table
+        SET 
+          ${Prisma.raw(earningsType)} = GREATEST(0, ${Prisma.raw(earningsType)} - ${Math.trunc(Number(amount) * 100) / 100}),
+          alliance_combined_earnings = GREATEST(0, alliance_combined_earnings - ${Math.trunc(Number(amount) * 100) / 100})
+        WHERE alliance_earnings_member_id = ${teamMemberProfile.alliance_member_id}::uuid;
+      `);
+        // Log the transaction
+        await prisma.alliance_transaction_table.create({
             data: {
-                [earningsType]: {
-                    decrement: Number(amount),
-                },
-                alliance_combined_earnings: {
-                    decrement: Number(amount),
-                },
+                transaction_amount: calculateFinalAmount(Number(amount), earnings),
+                transaction_description: "Withdrawal Ongoing",
+                transaction_member_id: teamMemberProfile.alliance_member_id,
             },
         }),
-            // Log the transaction
-            await prisma.alliance_transaction_table.create({
-                data: {
-                    transaction_amount: calculateFinalAmount(Number(amount), earnings),
-                    transaction_description: "Withdrawal Ongoing",
-                    transaction_member_id: teamMemberProfile.alliance_member_id,
-                },
-            }),
             await prisma.alliance_notification_table.create({
                 data: {
                     alliance_notification_user_id: teamMemberProfile.alliance_member_id,
