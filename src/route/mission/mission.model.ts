@@ -1,6 +1,5 @@
 import type { alliance_member_table } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
-import redis from "../../utils/redis.js";
 
 const rankMapping = [
   { index: 1, threshold: 3, rank: "iron" },
@@ -20,13 +19,13 @@ export const getMissions = async (params: {
   const { teamMemberProfile } = params;
   const allianceMemberId = teamMemberProfile.alliance_member_id;
 
-  const cacheKey = `mission-${teamMemberProfile.alliance_member_id}`;
+  // const cacheKey = `mission-${teamMemberProfile.alliance_member_id}`;
 
-  const cachedData = await redis.get(cacheKey);
+  // const cachedData = await redis.get(cacheKey);
 
-  if (cachedData) {
-    return cachedData;
-  }
+  // if (cachedData) {
+  //   return cachedData;
+  // }
 
   let missionProgress = await prisma.alliance_mission_progress_table.findFirst({
     where: { alliance_member_id: allianceMemberId, is_completed: false },
@@ -45,6 +44,10 @@ export const getMissions = async (params: {
     },
     take: 1,
   });
+
+  if (missionProgress === null) {
+    return { allMissionCompleted: true };
+  }
 
   if (!missionProgress) {
     const firstMission = await prisma.alliance_mission_table.findFirst({
@@ -108,77 +111,134 @@ export const getMissions = async (params: {
   const { mission } = missionProgress;
   const progressStartTime = missionProgress.alliance_mission_progress_created;
 
+  const taskTypes = new Set(
+    mission.tasks.map((task) => task.alliance_mission_task_type)
+  );
+
+  // Prepare query promises dynamically
+  const queryPromises: Promise<any>[] = [];
+
+  if (taskTypes.has("PACKAGE")) {
+    queryPromises.push(
+      prisma.package_member_connection_table.aggregate({
+        where: {
+          package_member_member_id: allianceMemberId,
+          package_member_connection_created: { gte: progressStartTime },
+        },
+        _sum: { package_member_amount: true },
+      })
+    );
+  } else {
+    queryPromises.push(Promise.resolve(null));
+  }
+
+  if (taskTypes.has("WITHDRAWAL")) {
+    queryPromises.push(
+      prisma.alliance_withdrawal_request_table.count({
+        where: {
+          alliance_withdrawal_request_member_id: allianceMemberId,
+          alliance_withdrawal_request_date: { gte: progressStartTime },
+        },
+      })
+    );
+  } else {
+    queryPromises.push(Promise.resolve(null));
+  }
+
+  if (taskTypes.has("DIRECT INCOME")) {
+    queryPromises.push(
+      prisma.package_ally_bounty_log.aggregate({
+        where: {
+          package_ally_bounty_member_id: allianceMemberId,
+          package_ally_bounty_type: "DIRECT",
+          package_ally_bounty_log_date_created: { gte: progressStartTime },
+        },
+        _sum: { package_ally_bounty_earnings: true },
+      })
+    );
+  } else {
+    queryPromises.push(Promise.resolve(null));
+  }
+
+  if (taskTypes.has("NETWORK INCOME")) {
+    queryPromises.push(
+      prisma.package_ally_bounty_log.aggregate({
+        where: {
+          package_ally_bounty_member_id: allianceMemberId,
+          package_ally_bounty_type: "INDIRECT",
+          package_ally_bounty_log_date_created: { gte: progressStartTime },
+        },
+        _sum: { package_ally_bounty_earnings: true },
+      })
+    );
+  } else {
+    queryPromises.push(Promise.resolve(null));
+  }
+
+  if (taskTypes.has("REINVESTMENT PACKAGE")) {
+    queryPromises.push(
+      prisma.package_member_connection_table.count({
+        where: {
+          package_member_member_id: allianceMemberId,
+          package_member_is_reinvestment: true,
+          package_member_connection_created: { gte: progressStartTime },
+        },
+      })
+    );
+  } else {
+    queryPromises.push(Promise.resolve(null));
+  }
+
+  if (taskTypes.has("TOTAL INCOME")) {
+    queryPromises.push(
+      prisma.dashboard_earnings_summary.findUnique({
+        where: { member_id: allianceMemberId },
+      })
+    );
+  } else {
+    queryPromises.push(Promise.resolve(null));
+  }
+
+  if (taskTypes.has("REFERRAL")) {
+    queryPromises.push(
+      prisma.package_ally_bounty_log.count({
+        where: {
+          package_ally_bounty_member_id: allianceMemberId,
+          package_ally_bounty_type: "DIRECT",
+          package_ally_bounty_log_date_created: { gte: progressStartTime },
+        },
+      })
+    );
+  } else {
+    queryPromises.push(Promise.resolve(null));
+  }
+
+  if (taskTypes.has("BADGE")) {
+    queryPromises.push(
+      prisma.alliance_ranking_table.findUnique({
+        where: { alliance_ranking_member_id: allianceMemberId },
+        select: { alliance_rank: true },
+      })
+    );
+  } else {
+    queryPromises.push(Promise.resolve(null));
+  }
+
   const [
     packageAmount,
     withdrawalCount,
-    directIncomeCount,
-    networkIncomeCount,
+    directBountySum,
+    indirectBountySum,
     reinvestmentCount,
     totalIncomeData,
     referralCount,
     allianceRanking,
-  ] = await Promise.all([
-    prisma.package_member_connection_table.aggregate({
-      where: {
-        package_member_member_id: allianceMemberId,
-        package_member_connection_created: { gte: progressStartTime },
-      },
-      _sum: { package_member_amount: true },
-    }),
-    prisma.alliance_withdrawal_request_table.count({
-      where: {
-        alliance_withdrawal_request_member_id: allianceMemberId,
-        alliance_withdrawal_request_date: { gte: progressStartTime },
-      },
-    }),
-    prisma.package_ally_bounty_log.count({
-      where: {
-        package_ally_bounty_member_id: allianceMemberId,
-        package_ally_bounty_type: "DIRECT",
-        package_ally_bounty_log_date_created: { gte: progressStartTime },
-      },
-    }),
-    prisma.package_ally_bounty_log.count({
-      where: {
-        package_ally_bounty_member_id: allianceMemberId,
-        package_ally_bounty_type: "INDIRECT",
-        package_ally_bounty_log_date_created: { gte: progressStartTime },
-      },
-    }),
-    prisma.package_member_connection_table.count({
-      where: {
-        package_member_member_id: allianceMemberId,
-        package_member_is_reinvestment: true,
-        package_member_connection_created: { gte: progressStartTime },
-      },
-    }),
-    prisma.dashboard_earnings_summary.findUnique({
-      where: { member_id: allianceMemberId },
-    }),
-    prisma.package_ally_bounty_log.count({
-      where: {
-        package_ally_bounty_member_id: allianceMemberId,
-        package_ally_bounty_type: "DIRECT",
-        package_ally_bounty_log_date_created: { gte: progressStartTime },
-      },
-    }),
-    prisma.alliance_ranking_table.findUnique({
-      where: {
-        alliance_ranking_member_id: allianceMemberId,
-      },
-      select: {
-        alliance_rank: true,
-      },
-    }),
-  ]);
-
+  ] = await Promise.all(queryPromises);
   const totalIncome = Number(totalIncomeData?.total_earnings || 0);
 
   const completedTaskIds = mission.tasks
     .filter((task) => {
       const taskTarget = task.alliance_mission_task_target;
-
-      // Find the closest matching rank in rankMapping
       const rankEntry = rankMapping.find((r) => r.index >= taskTarget);
       const requiredRank = rankEntry?.rank ?? null;
 
@@ -187,22 +247,23 @@ export const getMissions = async (params: {
           return (
             (packageAmount?._sum?.package_member_amount ?? 0) >= taskTarget
           );
-
         case "BADGE":
           return (
             requiredRank !== null &&
             allianceRanking?.alliance_rank === requiredRank
           );
-
         case "WITHDRAWAL":
           return withdrawalCount >= taskTarget;
-
         case "DIRECT INCOME":
-          return directIncomeCount >= taskTarget;
-
+          return (
+            (directBountySum._sum.package_ally_bounty_earnings ?? 0) >=
+            taskTarget
+          );
         case "NETWORK INCOME":
-          return networkIncomeCount >= taskTarget;
-
+          return (
+            (indirectBountySum._sum.package_ally_bounty_earnings ?? 0) >=
+            taskTarget
+          );
         case "REINVESTMENT PACKAGE":
           return reinvestmentCount >= taskTarget;
 
@@ -255,9 +316,9 @@ export const getMissions = async (params: {
         : task.alliance_mission_task_type === "WITHDRAWAL"
         ? withdrawalCount
         : task.alliance_mission_task_type === "DIRECT INCOME"
-        ? directIncomeCount
+        ? directBountySum._sum.package_ally_bounty_earnings ?? 0
         : task.alliance_mission_task_type === "NETWORK INCOME"
-        ? networkIncomeCount
+        ? indirectBountySum._sum.package_ally_bounty_earnings ?? 0
         : task.alliance_mission_task_type === "REINVESTMENT PACKAGE"
         ? reinvestmentCount
         : task.alliance_mission_task_type === "TOTAL INCOME"
@@ -270,6 +331,7 @@ export const getMissions = async (params: {
     const isCompleted = completedTaskIds.some(
       ({ taskId }) => taskId === task.alliance_mission_task_id
     );
+    console.log(allianceMemberId);
     return {
       task_id: task.alliance_mission_task_id,
       task_name: task.alliance_mission_task_name,
@@ -280,6 +342,15 @@ export const getMissions = async (params: {
           : task.alliance_mission_task_target === 2 &&
             task.alliance_mission_task_type === "BADGE"
           ? "bronze"
+          : task.alliance_mission_task_target === 3 &&
+            task.alliance_mission_task_type === "BADGE"
+          ? "silver"
+          : task.alliance_mission_task_target === 4 &&
+            task.alliance_mission_task_type === "BADGE"
+          ? "gold"
+          : task.alliance_mission_task_target === 5 &&
+            task.alliance_mission_task_type === "BADGE"
+          ? "platinum"
           : task.alliance_mission_task_target,
       task_type: task.alliance_mission_task_type,
       progress: taskProgress,
@@ -291,6 +362,16 @@ export const getMissions = async (params: {
             task.alliance_mission_task_type === "BADGE" &&
             task.alliance_mission_task_target === 2
           ? "bronze"
+          : task.alliance_mission_task_target &&
+            task.alliance_mission_task_type === "BADGE" &&
+            task.alliance_mission_task_target === 3
+          ? "silver"
+          : task.alliance_mission_task_target === 4 &&
+            task.alliance_mission_task_type === "BADGE"
+          ? "gold"
+          : task.alliance_mission_task_target === 5 &&
+            task.alliance_mission_task_type === "BADGE"
+          ? "platinum"
           : task.alliance_mission_task_target,
       is_completed: isCompleted,
     };
@@ -307,7 +388,7 @@ export const getMissions = async (params: {
     isMissionCompleted,
   };
 
-  await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
+  // await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
 
   return returnData;
 };
@@ -337,6 +418,8 @@ export const postMission = async (params: {
   });
 
   if (!missionProgress) return null;
+
+  if (missionProgress.is_completed) return null;
 
   // Check if all tasks are completed
   const isMissionCompleted =
@@ -412,6 +495,15 @@ export const postMission = async (params: {
       task.alliance_mission_task_type === "BADGE" &&
       task.alliance_mission_task_target === 2
         ? "bronze"
+        : task.alliance_mission_task_target === 3 &&
+          task.alliance_mission_task_type === "BADGE"
+        ? "silver"
+        : task.alliance_mission_task_target === 4 &&
+          task.alliance_mission_task_type === "BADGE"
+        ? "gold"
+        : task.alliance_mission_task_target === 5 &&
+          task.alliance_mission_task_type === "BADGE"
+        ? "platinum"
         : task.alliance_mission_task_target,
     task_type: task.alliance_mission_task_type,
     task_to_achieve:
@@ -421,6 +513,15 @@ export const postMission = async (params: {
         : task.alliance_mission_task_type === "BADGE" &&
           task.alliance_mission_task_target === 2
         ? "bronze"
+        : task.alliance_mission_task_target === 3 &&
+          task.alliance_mission_task_type === "BADGE"
+        ? "silver"
+        : task.alliance_mission_task_target === 4 &&
+          task.alliance_mission_task_type === "BADGE"
+        ? "gold"
+        : task.alliance_mission_task_target === 5 &&
+          task.alliance_mission_task_type === "BADGE"
+        ? "platinum"
         : task.alliance_mission_task_target,
     progress: task.task_progress.reduce(
       (acc, tp) => acc + tp.progress_count,

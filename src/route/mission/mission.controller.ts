@@ -9,6 +9,7 @@ export const missionController = async (c: Context) => {
 
     return c.json(mission);
   } catch (error) {
+    console.log(error);
     return c.json({ error: "Internal Server Error" }, 500);
   }
 };
