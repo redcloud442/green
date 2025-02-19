@@ -64,7 +64,7 @@ export const withdrawModel = async (params: {
     },
   });
 
-  if (!amountMatch || !teamMemberProfile?.alliance_member_is_active) {
+  if (!amountMatch) {
     throw new Error("Invalid request.");
   }
   const { alliance_olympus_earnings, alliance_referral_bounty } = amountMatch;
