@@ -379,6 +379,7 @@ export const userActiveListMiddleware = async (c: Context, next: Next) => {
     userRole,
     dateCreated,
     bannedUser,
+    type,
   } = await c.req.json();
 
   const validate = userListSchema.safeParse({
@@ -390,6 +391,7 @@ export const userActiveListMiddleware = async (c: Context, next: Next) => {
     userRole,
     dateCreated,
     bannedUser,
+    type,
   });
 
   if (!validate.success) {

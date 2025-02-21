@@ -208,7 +208,7 @@ export const userActiveListMiddleware = async (c, next) => {
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
-    const { page, limit, search, columnAccessor, isAscendingSort, userRole, dateCreated, bannedUser, } = await c.req.json();
+    const { page, limit, search, columnAccessor, isAscendingSort, userRole, dateCreated, bannedUser, type, } = await c.req.json();
     const validate = userListSchema.safeParse({
         page,
         limit,
@@ -218,6 +218,7 @@ export const userActiveListMiddleware = async (c, next) => {
         userRole,
         dateCreated,
         bannedUser,
+        type,
     });
     if (!validate.success) {
         return sendErrorResponse("Invalid Request", 400);

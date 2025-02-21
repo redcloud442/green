@@ -414,12 +414,31 @@ export const userListModel = async (params, teamMemberProfile) => {
     };
 };
 export const userActiveListModel = async (params) => {
-    const { page, limit, search, columnAccessor, isAscendingSort } = params;
+    const { page, limit, search, columnAccessor, isAscendingSort, type } = params;
     const offset = (page - 1) * limit;
     const sortBy = isAscendingSort ? "ASC" : "DESC";
-    const orderBy = columnAccessor
+    // Initialize dates
+    let startDate = null;
+    let endDate = null;
+    if (type === "WEEKLY") {
+        // End date is today
+        const today = new Date(getPhilippinesTime(new Date(), "start"));
+        endDate = today.toISOString();
+        // Start date is 7 days before the end date
+        const startDateObject = new Date(today);
+        startDateObject.setDate(today.getDate() - 7);
+        startDate = startDateObject.toISOString();
+    }
+    const allowedColumns = new Set([
+        "user_username",
+        "user_first_name",
+        "user_last_name",
+        "alliance_olympus_wallet",
+    ]);
+    const orderBy = allowedColumns.has(columnAccessor)
         ? Prisma.sql `ORDER BY ${Prisma.raw(columnAccessor)} ${Prisma.raw(sortBy)}`
         : Prisma.empty;
+    // Build search condition dynamically
     const searchCondition = search
         ? Prisma.sql `
         AND (
@@ -429,6 +448,14 @@ export const userActiveListModel = async (params) => {
         )
       `
         : Prisma.empty;
+    const dateConditions = Prisma.sql `
+    ${startDate
+        ? Prisma.sql `AND pml.package_member_connection_created >= ${startDate}::timestamptz`
+        : Prisma.empty}
+    ${endDate
+        ? Prisma.sql `AND pml.package_member_connection_created <= ${endDate}::timestamptz`
+        : Prisma.empty}
+  `;
     const usersWithActiveWallet = await prisma.$queryRaw `
     SELECT 
       ut.user_id,
@@ -442,25 +469,33 @@ export const userActiveListModel = async (params) => {
       ON ut.user_id = am.alliance_member_user_id
     LEFT JOIN alliance_schema.alliance_earnings_table ae
       ON ae.alliance_earnings_member_id = am.alliance_member_id
+    LEFT JOIN packages_schema.package_member_connection_table pml
+      ON pml.package_member_member_id = am.alliance_member_id
     WHERE 
-      ae.alliance_olympus_wallet > 0
+      pml.package_member_member_id IS NULL
+      ${dateConditions}
+      AND ae.alliance_olympus_wallet > 0
       ${searchCondition}
       ${orderBy}
     LIMIT ${limit}
     OFFSET ${offset}
   `;
+    // Query to get total count
     const totalCount = await prisma.$queryRaw `
-    SELECT 
-      COUNT(*)
+    SELECT COUNT(*)
     FROM user_schema.user_table ut
     JOIN alliance_schema.alliance_member_table am
       ON ut.user_id = am.alliance_member_user_id
     LEFT JOIN alliance_schema.alliance_earnings_table ae
       ON ae.alliance_earnings_member_id = am.alliance_member_id
-      WHERE 
-      ae.alliance_olympus_wallet > 0
+    LEFT JOIN packages_schema.package_member_connection_table pml
+      ON pml.package_member_member_id = am.alliance_member_id
+    WHERE 
+      pml.package_member_member_id IS NULL
+      ${dateConditions}
+      AND ae.alliance_olympus_wallet > 0
       ${searchCondition}
-    `;
+  `;
     return {
         data: usersWithActiveWallet,
         totalCount: Number(totalCount[0]?.count ?? 0),

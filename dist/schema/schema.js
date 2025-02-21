@@ -135,6 +135,7 @@ export const userListSchema = z.object({
     userRole: z.string().optional(),
     dateCreated: z.string().optional(),
     bannedUser: z.boolean().optional(),
+    type: z.enum(["DAILY", "WEEKLY"]).optional(),
 });
 export const userActiveListSchema = z.object({
     page: z.number().min(1),

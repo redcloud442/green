@@ -91,6 +91,7 @@ export const userActiveListController = async (c) => {
         return c.json(data, { status: 200 });
     }
     catch (error) {
+        console.log(error);
         return c.json({ error: "Internal Server Error" }, { status: 500 });
     }
 };
