@@ -149,6 +149,7 @@ export const userModelPost = async (params: { memberId: string }) => {
     incomeTags.find((tag) => earnings >= tag.threshold)?.tag || null;
 
   const currentRank = userRaking ? userRaking.alliance_rank : null;
+
   const currentIncomeTag = userRaking
     ? userRaking.alliance_total_income_tag
     : null;
@@ -191,6 +192,7 @@ export const userModelPost = async (params: { memberId: string }) => {
     });
   }
   const tags = [];
+
   if (applicableIncomeTag) tags.push(applicableIncomeTag);
 
   const totalEarnings = {
@@ -561,14 +563,14 @@ export const userActiveListModel = async (params: {
       ut.user_first_name,
       ut.user_last_name,
       ut.user_profile_picture,
-      am.alliance_member_is_active
+      ae.alliance_olympus_wallet
     FROM user_schema.user_table ut
     JOIN alliance_schema.alliance_member_table am
       ON ut.user_id = am.alliance_member_user_id
     LEFT JOIN alliance_schema.alliance_earnings_table ae
       ON ae.alliance_earnings_member_id = am.alliance_member_id
     WHERE 
-      ae.alliance_combined_earnings > 0
+      ae.alliance_olympus_wallet > 0
       ${searchCondition}
       ${orderBy}
     LIMIT ${limit}
@@ -584,7 +586,7 @@ export const userActiveListModel = async (params: {
     LEFT JOIN alliance_schema.alliance_earnings_table ae
       ON ae.alliance_earnings_member_id = am.alliance_member_id
       WHERE 
-      ae.alliance_combined_earnings > 0
+      ae.alliance_olympus_wallet > 0
       ${searchCondition}
     `;
 
