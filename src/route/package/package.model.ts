@@ -623,6 +623,7 @@ function deductFromWallets(
       remaining = 0;
     } else {
       remaining -= olympusEarnings;
+      isReinvestment = true;
       olympusEarnings = 0;
     }
   }
