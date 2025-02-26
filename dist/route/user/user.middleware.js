@@ -13,7 +13,7 @@ export const userPutMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-put`, 100, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-put`, 100, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -34,7 +34,7 @@ export const userPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-post`, 100, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-post`, 100, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -55,7 +55,7 @@ export const userGetMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-get`, 100, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-get`, 100, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -72,7 +72,7 @@ export const userPatchMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-patch`, 100, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-patch`, 100, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -100,7 +100,7 @@ export const userSponsorMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-sponsor`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-sponsor`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -122,7 +122,7 @@ export const userProfilePutMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-profile-update`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-profile-update`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -148,7 +148,7 @@ export const userGenerateLinkMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-generate-link`, 100, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-generate-link`, 100, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -172,7 +172,7 @@ export const userListMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-list`, 100, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-list`, 100, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -204,7 +204,7 @@ export const userActiveListMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-active-list`, 100, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-active-list`, 100, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -237,7 +237,7 @@ export const userChangePasswordMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-profile-update`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-profile-update`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -264,7 +264,7 @@ export const userPreferredBankMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-profile-update`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-profile-update`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -291,7 +291,7 @@ export const userProfileDataPutMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-profile-update`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-profile-update`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -318,7 +318,7 @@ export const userListReinvestedMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-list-reinvested`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-list-reinvested`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

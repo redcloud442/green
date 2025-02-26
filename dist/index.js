@@ -110,7 +110,7 @@ io.on("connection", async (socket) => {
     });
     socket.on("sendMessage", async (message) => {
         const teamMemberProfile = socket.data.teamMemberProfile;
-        const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-message-`, 10, 60);
+        const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-message-`, 10, "1m");
         if (!isAllowed) {
             return socket.emit("error", "Too Many Requests");
         }

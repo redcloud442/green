@@ -33,7 +33,7 @@ export const withdrawPostMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-post`,
     50,
-    60
+    "1m"
   );
 
   if (!isAllowed) {
@@ -82,7 +82,7 @@ export const withdrawHistoryPostMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-history-get`,
     50,
-    60
+    "1m"
   );
 
   if (!isAllowed) {
@@ -129,7 +129,7 @@ export const updateWithdrawMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:update-withdraw`,
     100,
-    60
+    "1m"
   );
 
   if (!isAllowed) {
@@ -173,7 +173,7 @@ export const withdrawListPostMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-list-post`,
     100,
-    60
+    "1m"
   );
 
   if (!isAllowed) {
@@ -230,7 +230,7 @@ export const withdrawGetMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-list-post`,
     100,
-    60
+    "1m"
   );
 
   if (!isAllowed) {
@@ -263,7 +263,7 @@ export const withdrawHistoryReportPostMiddleware = async (
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-history-report-post`,
     100,
-    60
+    "1m"
   );
 
   if (!isAllowed) {
@@ -305,7 +305,7 @@ export const withdrawTotalReportPostMiddleware = async (
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-history-report-post`,
     100,
-    60
+    "1m"
   );
 
   if (!isAllowed) {

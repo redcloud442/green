@@ -147,7 +147,7 @@ io.on("connection", async (socket) => {
     const isAllowed = await rateLimit(
       `rate-limit:${teamMemberProfile.alliance_member_id}:chat-message-`,
       10,
-      60
+      "1m"
     );
 
     if (!isAllowed) {

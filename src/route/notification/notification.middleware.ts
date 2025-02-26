@@ -21,7 +21,11 @@ export const notificationPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 10, 60);
+  const isAllowed = await rateLimit(
+    `rate-limit:${user.id}:email-post`,
+    10,
+    "1m"
+  );
 
   if (!isAllowed) {
     return sendErrorResponse("Too Many Requests", 429);
@@ -55,7 +59,7 @@ export const notificationPutMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:notification-get`,
     10,
-    60
+    "1m"
   );
 
   if (!isAllowed) {
@@ -89,7 +93,7 @@ export const notificationGetMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:notification-get`,
     10,
-    60
+    "1m"
   );
 
   if (!isAllowed) {
@@ -128,7 +132,7 @@ export const notificationPutNotificationMiddleware = async (
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:notification-get`,
     10,
-    60
+    "1m"
   );
 
   if (!isAllowed) {

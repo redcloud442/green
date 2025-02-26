@@ -13,7 +13,7 @@ export const chatSessionPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-post`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-post`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -38,7 +38,7 @@ export const chatSessionGetMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-get`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-get`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -63,7 +63,7 @@ export const chatSessionGetMessageMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-get`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-get`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -80,7 +80,7 @@ export const chatRequestSessionMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-request`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-request`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -97,7 +97,7 @@ export const chatSessionGetMessageIdMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-message-id`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-message-id`, 50, "1m");
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

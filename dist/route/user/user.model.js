@@ -450,10 +450,10 @@ export const userActiveListModel = async (params) => {
         : Prisma.empty;
     const dateConditions = Prisma.sql `
     ${startDate
-        ? Prisma.sql `AND pml.package_member_connection_created >= ${startDate}::timestamptz`
+        ? Prisma.sql `AND (pml.package_member_connection_created IS NULL OR pml.package_member_connection_created < ${startDate}::timestamptz)`
         : Prisma.empty}
     ${endDate
-        ? Prisma.sql `AND pml.package_member_connection_created <= ${endDate}::timestamptz`
+        ? Prisma.sql `AND (pml.package_member_connection_created IS NULL OR pml.package_member_connection_created > ${endDate}::timestamptz)`
         : Prisma.empty}
   `;
     const usersWithActiveWallet = await prisma.$queryRaw `
