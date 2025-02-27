@@ -1,8 +1,8 @@
-import { redis } from "@/utils/redis.js";
 import { Prisma, } from "@prisma/client";
 import bcryptjs from "bcryptjs";
 import { getPhilippinesTime } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
+import { redis } from "../../utils/redis.js";
 import { supabaseClient } from "../../utils/supabase.js";
 export const userModelPut = async (params) => {
     const { userId, email, password } = params;

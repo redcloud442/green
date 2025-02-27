@@ -1,6 +1,3 @@
-import type { UserRequestdata } from "../../utils/types.js";
-
-import { redis } from "@/utils/redis.js";
 import {
   Prisma,
   type alliance_member_table,
@@ -10,7 +7,9 @@ import {
 import bcryptjs from "bcryptjs";
 import { getPhilippinesTime } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
+import { redis } from "../../utils/redis.js";
 import { supabaseClient } from "../../utils/supabase.js";
+import type { UserRequestdata } from "../../utils/types.js";
 
 export const userModelPut = async (params: {
   userId: string;
