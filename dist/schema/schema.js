@@ -126,6 +126,9 @@ export const userGenerateLinkSchema = z.object({
 export const userSponsorSchema = z.object({
     userId: z.string().uuid(),
 });
+export const userTreeSchema = z.object({
+    memberId: z.string().uuid(),
+});
 export const userListSchema = z.object({
     page: z.number().min(1),
     limit: z.number().min(1).max(10),

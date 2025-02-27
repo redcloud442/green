@@ -29,7 +29,8 @@ export const chatSessionPostMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-post`,
     50,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -70,7 +71,8 @@ export const chatSessionGetMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-get`,
     50,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -114,7 +116,8 @@ export const chatSessionGetMessageMiddleware = async (
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-get`,
     50,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -144,7 +147,8 @@ export const chatRequestSessionMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-request`,
     50,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -177,7 +181,8 @@ export const chatSessionGetMessageIdMiddleware = async (
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:chat-session-message-id`,
     50,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {

@@ -1,5 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import type { Context } from "hono";
 
 export const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL || "https://default.redis.url'",
@@ -16,7 +17,8 @@ export const redis = new Redis({
 export async function rateLimit(
   identifier: string,
   maxRequests: number,
-  timeWindow: "10s" | "1m" | "5m" | "1h"
+  timeWindow: "10s" | "1m" | "5m" | "1h",
+  c: Context
 ) {
   const ratelimit = new Ratelimit({
     redis: redis as any,
@@ -26,9 +28,9 @@ export async function rateLimit(
   });
 
   const { success, pending } = await ratelimit.limit(identifier, {
-    ip: "ip-address",
-    userAgent: "user-agent",
-    country: "country",
+    ip: c.req.header("x-forwarded-for") || "ip-address",
+    userAgent: c.req.header("user-agent") || "user-agent",
+    country: c.req.header("cf-ipcountry") || "country",
   });
 
   await pending;

@@ -14,7 +14,8 @@ export const messagingPostMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:email-post`,
     50,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -49,7 +50,8 @@ export const messagingBatchPostMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:email-post`,
     50,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {

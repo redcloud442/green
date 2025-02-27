@@ -10,7 +10,6 @@ import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
 import route from "./route/route.js";
 import prisma from "./utils/prisma.js";
-import { rateLimit } from "./utils/redis.js";
 const app = new Hono();
 app.use("*", supabaseMiddleware(), cors({
     origin: [
@@ -110,14 +109,9 @@ io.on("connection", async (socket) => {
     });
     socket.on("sendMessage", async (message) => {
         const teamMemberProfile = socket.data.teamMemberProfile;
-        const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:chat-message-`, 10, "1m");
-        if (!isAllowed) {
-            return socket.emit("error", "Too Many Requests");
-        }
         const data = await prisma.chat_message_table.create({
             data: { ...message },
         });
-        console.log("data", data);
         io.to(data.chat_message_session_id).emit("newMessage", message);
     });
     socket.on("endSupport", async (sessionId) => {

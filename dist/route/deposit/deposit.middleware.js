@@ -13,7 +13,7 @@ export const depositMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:deposit-post`, 10, "1m");
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:deposit-post`, 10, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -43,7 +43,7 @@ export const depositPutMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}`, 50, "1m");
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}`, 50, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -71,7 +71,7 @@ export const depositHistoryPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:deposit-history-get`, 50, "1m");
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:deposit-history-get`, 50, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -102,7 +102,7 @@ export const depositListPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:deposit-list-get`, 50, "1m");
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:deposit-list-get`, 50, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -135,7 +135,7 @@ export const depositReportPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:deposit-list-get`, 50, "1m");
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:deposit-list-get`, 50, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

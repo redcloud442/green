@@ -13,6 +13,7 @@ import {
   userProfileDataPutModel,
   userProfileModelPut,
   userSponsorModel,
+  userTreeModel,
 } from "./user.model.js";
 
 export const userPutController = async (c: Context) => {
@@ -172,6 +173,18 @@ export const userListReinvestedController = async (c: Context) => {
     const params = c.get("params");
 
     const data = await userListReinvestedModel(params);
+
+    return c.json(data, 200);
+  } catch (error) {
+    return c.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+};
+
+export const userTreeController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    const data = await userTreeModel(params);
 
     return c.json(data, 200);
   } catch (error) {

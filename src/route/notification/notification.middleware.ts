@@ -24,7 +24,8 @@ export const notificationPostMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:email-post`,
     10,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -59,7 +60,8 @@ export const notificationPutMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:notification-get`,
     10,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -93,7 +95,8 @@ export const notificationGetMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:notification-get`,
     10,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -132,7 +135,8 @@ export const notificationPutNotificationMiddleware = async (
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:notification-get`,
     10,
-    "1m"
+    "1m",
+    c
   );
 
   if (!isAllowed) {
