@@ -94,6 +94,7 @@ model alliance_member_table {
   chat_message_table chat_message_table[]
   chat_session_support_table chat_session_table[] @relation("Support")
 
+
   package_ally_bounty_log_from package_ally_bounty_log[] @relation("FromMember")
   @@schema("alliance_schema")
 }
@@ -133,7 +134,6 @@ model dashboard_earnings_summary {
   direct_referral_amount Float    @default(0)  @map("direct_referral_amount")
   indirect_referral_amount Float    @default(0)  @map("indirect_referral_amount")
   direct_referral_count  Float      @default(0)  @map("direct_referral_count")
-  indirect_referral_count Float     @default(0)  @map("indirect_referral_count")
   package_income         Float    @default(0)  @map("package_income")
 
   @@map("dashboard_earnings_summary")
@@ -245,6 +245,93 @@ model alliance_withdrawal_request_table {
   @@schema("alliance_schema")
 }
 
+model alliance_mission_table {
+  alliance_mission_id        String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  alliance_mission_name      String
+  alliance_mission_order     Int     @unique
+  alliance_mission_is_active Boolean @default(true)
+  alliance_mission_reward    Float   @default(0)
+
+  tasks                      alliance_mission_task_table[]
+
+  progress_entries           alliance_mission_progress_table[]
+
+  @@schema("alliance_schema")
+}
+
+model alliance_mission_task_table {
+  alliance_mission_task_id     String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  alliance_mission_id          String  @db.Uuid
+  alliance_mission_task_name   String
+  alliance_mission_task_target Int
+  alliance_mission_task_type   String 
+
+  mission                      alliance_mission_table @relation(fields: [alliance_mission_id], references: [alliance_mission_id], onDelete: Cascade)
+
+  task_progress                alliance_mission_task_progress_table[]
+  
+  progress_mission             alliance_mission_progress_task[]
+
+  @@unique([alliance_mission_id, alliance_mission_task_name]) // Ensures no duplicate tasks for a mission
+  @@schema("alliance_schema")
+
+  @@index([alliance_mission_id], name: "idx_alliance_mission_id")
+}
+
+model alliance_mission_progress_table {
+  alliance_mission_progress_id String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  alliance_member_id           String  @db.Uuid
+  alliance_mission_id          String  @db.Uuid
+
+  is_completed                 Boolean @default(false)
+  reward_claimed               Boolean @default(false)
+  completed_at                 DateTime? @db.Timestamptz(6)
+  alliance_mission_progress_created DateTime @default(now()) @db.Timestamptz(3)
+
+  mission                      alliance_mission_table @relation(fields: [alliance_mission_id], references: [alliance_mission_id], onDelete: Cascade)
+  
+  progress_tasks               alliance_mission_progress_task[]
+
+  @@unique([alliance_member_id, alliance_mission_id]) // Ensures only one mission progress per member per mission
+  @@schema("alliance_schema")
+
+  @@index([alliance_member_id], name: "idx_alliance_member_id")
+  @@index([alliance_mission_id], name: "idx_alliance_missions_id")
+}
+
+model alliance_mission_progress_task {
+  alliance_mission_progress_id String @db.Uuid
+  alliance_mission_task_id     String @db.Uuid
+
+  progress                     alliance_mission_progress_table @relation(fields: [alliance_mission_progress_id], references: [alliance_mission_progress_id], onDelete: Cascade)
+  task                         alliance_mission_task_table @relation(fields: [alliance_mission_task_id], references: [alliance_mission_task_id], onDelete: Cascade)
+
+  @@id([alliance_mission_progress_id, alliance_mission_task_id])
+  @@schema("alliance_schema")
+
+  @@index([alliance_mission_progress_id], name: "idx_alliance_mission_progress_id")
+  @@index([alliance_mission_task_id], name: "idx_alliance_mission_task_id")
+}
+
+model alliance_mission_task_progress_table {
+  alliance_mission_task_progress_id String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  alliance_member_id                String  @db.Uuid
+  alliance_mission_task_id          String  @db.Uuid
+  progress_count                    Int     @default(0)
+  is_completed                      Boolean @default(false)
+  completed_at                      DateTime? @db.Timestamptz(6)
+
+  // Relationships
+  task                              alliance_mission_task_table @relation(fields: [alliance_mission_task_id], references: [alliance_mission_task_id], onDelete: Cascade)
+
+  @@unique([alliance_member_id, alliance_mission_task_id]) // Ensures unique tracking per member per task
+  @@schema("alliance_schema")
+
+  @@index([alliance_member_id], name: "idx_alliance_member_mission_task_id")
+  @@index([alliance_mission_task_id], name: "idx_alliance_mission_progress_task_id")
+}
+
+
 model alliance_transaction_table {
   transaction_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   transaction_date DateTime @default(now()) @db.Timestamptz(3)
@@ -292,6 +379,7 @@ model package_member_connection_table {
   alliance_member_table alliance_member_table @relation(fields: [package_member_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
   package_ally_bounty_log package_ally_bounty_log[]
   package_earnings_log package_earnings_log[]
+
   @@schema("packages_schema")
   @@index([package_member_package_id], name: "idx_package_member_package_id")
   @@index([package_member_member_id], name: "idx_package_member_member_id")
@@ -308,6 +396,7 @@ model package_earnings_log {
   package_member_amount                Float    @default(0)
   package_member_amount_earnings       Float    @default(0)
   package_member_status                String
+  package_member_connection_date_claimed DateTime  @default(now()) @db.Timestamptz(3)
 
   package_table                       package_table       @relation(fields: [package_member_package_id], references: [package_id], onDelete: Cascade, onUpdate: Cascade)
   alliance_member_table               alliance_member_table @relation(fields: [package_member_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)

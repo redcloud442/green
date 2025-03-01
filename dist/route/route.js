@@ -9,6 +9,7 @@ import health from "./health/health.route.js";
 import leaderboard from "./leaderboard/leaderboard.route.js";
 import merchant from "./merchant/merchant.route.js";
 import messaging from "./messaging/messaging.route.js";
+import mission from "./mission/mission.route.js";
 import notification from "./notification/notification.route.js";
 import options from "./options/options.route.js";
 import packages from "./package/package.route.js";
@@ -63,5 +64,8 @@ app.route("/notification", notification);
 //chat route
 app.use("/chat/*", protectionMiddleware);
 app.route("/chat", chat);
+//mission route
+app.use("/mission/*", protectionMiddleware);
+app.route("/mission", mission);
 app.get("/", (c) => c.text("This is the api endpoint"));
 export default app;
