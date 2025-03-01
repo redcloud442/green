@@ -16,7 +16,8 @@ export const missionMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:mission-get`,
     50,
-    60
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -40,7 +41,8 @@ export const missionPostMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${user.id}:mission-post`,
     10,
-    60
+    "1m",
+    c
   );
 
   if (!isAllowed) {

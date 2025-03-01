@@ -8,7 +8,7 @@ export const missionMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:mission-get`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${user.id}:mission-get`, 50, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -21,7 +21,7 @@ export const missionPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:mission-post`, 10, 60);
+    const isAllowed = await rateLimit(`rate-limit:${user.id}:mission-post`, 10, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

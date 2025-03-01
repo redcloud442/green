@@ -264,7 +264,7 @@ model alliance_mission_task_table {
   alliance_mission_id          String  @db.Uuid
   alliance_mission_task_name   String
   alliance_mission_task_target Int
-  alliance_mission_task_type   String  // ENUM ('REFERRAL', 'INCOME', 'PACKAGE', 'WITHDRAWAL', 'BADGE')
+  alliance_mission_task_type   String 
 
   mission                      alliance_mission_table @relation(fields: [alliance_mission_id], references: [alliance_mission_id], onDelete: Cascade)
 
@@ -273,8 +273,9 @@ model alliance_mission_task_table {
   progress_mission             alliance_mission_progress_task[]
 
   @@unique([alliance_mission_id, alliance_mission_task_name]) // Ensures no duplicate tasks for a mission
-  @@index([alliance_mission_id])
   @@schema("alliance_schema")
+
+  @@index([alliance_mission_id], name: "idx_alliance_mission_id")
 }
 
 model alliance_mission_progress_table {
@@ -292,8 +293,10 @@ model alliance_mission_progress_table {
   progress_tasks               alliance_mission_progress_task[]
 
   @@unique([alliance_member_id, alliance_mission_id]) // Ensures only one mission progress per member per mission
-  @@index([alliance_member_id])
   @@schema("alliance_schema")
+
+  @@index([alliance_member_id], name: "idx_alliance_member_id")
+  @@index([alliance_mission_id], name: "idx_alliance_missions_id")
 }
 
 model alliance_mission_progress_task {
@@ -305,6 +308,9 @@ model alliance_mission_progress_task {
 
   @@id([alliance_mission_progress_id, alliance_mission_task_id])
   @@schema("alliance_schema")
+
+  @@index([alliance_mission_progress_id], name: "idx_alliance_mission_progress_id")
+  @@index([alliance_mission_task_id], name: "idx_alliance_mission_task_id")
 }
 
 model alliance_mission_task_progress_table {
@@ -319,8 +325,10 @@ model alliance_mission_task_progress_table {
   task                              alliance_mission_task_table @relation(fields: [alliance_mission_task_id], references: [alliance_mission_task_id], onDelete: Cascade)
 
   @@unique([alliance_member_id, alliance_mission_task_id]) // Ensures unique tracking per member per task
-  @@index([alliance_member_id])
   @@schema("alliance_schema")
+
+  @@index([alliance_member_id], name: "idx_alliance_member_mission_task_id")
+  @@index([alliance_mission_task_id], name: "idx_alliance_mission_progress_task_id")
 }
 
 

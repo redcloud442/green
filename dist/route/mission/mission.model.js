@@ -13,11 +13,6 @@ const rankMapping = [
 export const getMissions = async (params) => {
     const { teamMemberProfile } = params;
     const allianceMemberId = teamMemberProfile.alliance_member_id;
-    // const cacheKey = `mission-${teamMemberProfile.alliance_member_id}`;
-    // const cachedData = await redis.get(cacheKey);
-    // if (cachedData) {
-    //   return cachedData;
-    // }
     let missionProgress = await prisma.alliance_mission_progress_table.findFirst({
         where: { alliance_member_id: allianceMemberId, is_completed: false },
         include: {
@@ -111,6 +106,7 @@ export const getMissions = async (params) => {
         queryPromises.push(prisma.alliance_withdrawal_request_table.count({
             where: {
                 alliance_withdrawal_request_member_id: allianceMemberId,
+                alliance_withdrawal_request_status: "APPROVED",
                 alliance_withdrawal_request_date: { gte: progressStartTime },
             },
         }));
@@ -241,11 +237,15 @@ export const getMissions = async (params) => {
         }));
     }
     const updatedTasks = mission.tasks.map((task) => {
+        const requiredRankEntry = rankMapping.find((r) => r.index === task.alliance_mission_task_target);
+        const requiredRank = requiredRankEntry?.rank ?? null;
+        const hasRequiredRank = requiredRank !== null && allianceRanking?.alliance_rank === requiredRank;
         const taskProgress = task.alliance_mission_task_type === "PACKAGE"
             ? packageAmount?._sum?.package_member_amount ?? 0
             : task.alliance_mission_task_type === "BADGE"
-                ? rankMapping.find((r) => r.index >= task.alliance_mission_task_target)
-                    ?.rank
+                ? hasRequiredRank
+                    ? 1
+                    : 0
                 : task.alliance_mission_task_type === "WITHDRAWAL"
                     ? withdrawalCount
                     : task.alliance_mission_task_type === "DIRECT INCOME"
@@ -266,22 +266,24 @@ export const getMissions = async (params) => {
             task_name: task.alliance_mission_task_name,
             task_target: task.alliance_mission_task_type === "BADGE" &&
                 task.alliance_mission_task_target === 1
-                ? "iron"
+                ? "1"
                 : task.alliance_mission_task_target === 2 &&
                     task.alliance_mission_task_type === "BADGE"
-                    ? "bronze"
+                    ? "1"
                     : task.alliance_mission_task_target === 3 &&
                         task.alliance_mission_task_type === "BADGE"
-                        ? "silver"
+                        ? "1"
                         : task.alliance_mission_task_target === 4 &&
                             task.alliance_mission_task_type === "BADGE"
-                            ? "gold"
+                            ? "1"
                             : task.alliance_mission_task_target === 5 &&
                                 task.alliance_mission_task_type === "BADGE"
-                                ? "platinum"
+                                ? "1"
                                 : task.alliance_mission_task_target,
             task_type: task.alliance_mission_task_type,
-            progress: taskProgress,
+            progress: task.alliance_mission_task_type === "BADGE" && hasRequiredRank
+                ? 1
+                : taskProgress,
             task_to_achieve: task.alliance_mission_task_type === "BADGE" &&
                 task.alliance_mission_task_target === 1
                 ? "iron"
@@ -312,7 +314,6 @@ export const getMissions = async (params) => {
         tasks: updatedTasks,
         isMissionCompleted,
     };
-    // await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
     return returnData;
 };
 export const postMission = async (params) => {
@@ -393,32 +394,43 @@ export const postMission = async (params) => {
             });
         }
     }
-    // Transform mission tasks
+    const allianceRanking = await prisma.alliance_ranking_table.findUnique({
+        where: { alliance_ranking_member_id: allianceMemberId },
+        select: { alliance_rank: true },
+    });
+    const requiredRankEntry = rankMapping.find((r) => r.index === missionProgress?.mission.alliance_mission_order);
+    const requiredRank = requiredRankEntry?.rank ?? null;
+    const hasRequiredRank = requiredRank !== null && allianceRanking?.alliance_rank === requiredRank;
     const formattedTask = missionProgress?.mission.tasks.map((task) => ({
         task_id: task.alliance_mission_task_id,
         task_name: task.alliance_mission_task_name,
         task_target: task.alliance_mission_task_type === "BADGE" &&
-            task.alliance_mission_task_target === 2
-            ? "bronze"
-            : task.alliance_mission_task_target === 3 &&
+            task.alliance_mission_task_target === 1
+            ? "1"
+            : task.alliance_mission_task_target === 2 &&
                 task.alliance_mission_task_type === "BADGE"
-                ? "silver"
-                : task.alliance_mission_task_target === 4 &&
+                ? "1"
+                : task.alliance_mission_task_target === 3 &&
                     task.alliance_mission_task_type === "BADGE"
-                    ? "gold"
-                    : task.alliance_mission_task_target === 5 &&
+                    ? "1"
+                    : task.alliance_mission_task_target === 4 &&
                         task.alliance_mission_task_type === "BADGE"
-                        ? "platinum"
-                        : task.alliance_mission_task_target,
+                        ? "1"
+                        : task.alliance_mission_task_target === 5 &&
+                            task.alliance_mission_task_type === "BADGE"
+                            ? "1"
+                            : task.alliance_mission_task_target,
         task_type: task.alliance_mission_task_type,
         task_to_achieve: task.alliance_mission_task_type === "BADGE" &&
             task.alliance_mission_task_target === 1
             ? "iron"
-            : task.alliance_mission_task_type === "BADGE" &&
+            : task.alliance_mission_task_target &&
+                task.alliance_mission_task_type === "BADGE" &&
                 task.alliance_mission_task_target === 2
                 ? "bronze"
-                : task.alliance_mission_task_target === 3 &&
-                    task.alliance_mission_task_type === "BADGE"
+                : task.alliance_mission_task_target &&
+                    task.alliance_mission_task_type === "BADGE" &&
+                    task.alliance_mission_task_target === 3
                     ? "silver"
                     : task.alliance_mission_task_target === 4 &&
                         task.alliance_mission_task_type === "BADGE"
@@ -427,7 +439,9 @@ export const postMission = async (params) => {
                             task.alliance_mission_task_type === "BADGE"
                             ? "platinum"
                             : task.alliance_mission_task_target,
-        progress: task.task_progress.reduce((acc, tp) => acc + tp.progress_count, 0),
+        progress: task.alliance_mission_task_type === "BADGE" && hasRequiredRank
+            ? 1
+            : task.task_progress.reduce((acc, tp) => acc + tp.progress_count, 0),
         is_completed: task.task_progress.every((tp) => tp.is_completed),
     }));
     const missionData = {
