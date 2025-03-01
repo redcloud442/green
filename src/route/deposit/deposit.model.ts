@@ -1,3 +1,4 @@
+import { getPhilippinesTime } from "@/utils/function.js";
 import type { ReturnDataType, TopUpRequestData } from "@/utils/types.js";
 import { Prisma, type alliance_member_table } from "@prisma/client";
 import {
@@ -506,8 +507,8 @@ export const depositReportPostModel = async (params: {
     await prisma.alliance_top_up_request_table.aggregate({
       where: {
         alliance_top_up_request_date_updated: {
-          gte: startDate,
-          lte: endDate,
+          gte: getPhilippinesTime(startDate, "start"),
+          lte: getPhilippinesTime(endDate, "end"),
         },
         alliance_top_up_request_status: "APPROVED",
       },
