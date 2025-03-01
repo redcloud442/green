@@ -40,9 +40,18 @@ export const referralDirectModelPost = async (params) => {
         GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
     ) AS subquery;
 `;
+    const totalReferralCountDirect = await prisma.dashboard_earnings_summary.findUnique({
+        where: {
+            member_id: teamMemberProfile.alliance_member_id,
+        },
+        select: {
+            direct_referral_count: true,
+        },
+    });
     const returnData = {
         data: direct,
         totalCount: Number(totalCount[0]?.count || 0),
+        totalReferralCountDirect: totalReferralCountDirect?.direct_referral_count,
     };
     await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
     return returnData;
