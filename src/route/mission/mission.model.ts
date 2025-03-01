@@ -1,3 +1,4 @@
+import { redis } from "@/utils/redis.js";
 import type { alliance_member_table } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
 
@@ -18,6 +19,13 @@ export const getMissions = async (params: {
 }) => {
   const { teamMemberProfile } = params;
   const allianceMemberId = teamMemberProfile.alliance_member_id;
+  const cacheKey = `mission-get-${allianceMemberId}`;
+
+  const cachedData = await redis.get(cacheKey);
+
+  if (cachedData) {
+    return cachedData;
+  }
 
   let missionProgress = await prisma.alliance_mission_progress_table.findFirst({
     where: { alliance_member_id: allianceMemberId, is_completed: false },
@@ -391,6 +399,8 @@ export const getMissions = async (params: {
     tasks: updatedTasks,
     isMissionCompleted,
   };
+
+  await redis.set(cacheKey, JSON.stringify(returnData), { ex: 100 });
 
   return returnData;
 };
