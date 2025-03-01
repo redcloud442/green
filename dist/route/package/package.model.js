@@ -45,7 +45,7 @@ export const packagePostModel = async (params) => {
     if (combinedEarnings < requestedAmount) {
         throw new Error("Insufficient balance in the wallet.");
     }
-    const { olympusWallet, olympusEarnings, referralWallet, updatedCombinedWallet, isReinvestment, reinvestmentAmount, } = deductFromWallets(requestedAmount, combinedEarnings, Number(alliance_olympus_wallet), Number(alliance_olympus_earnings), Number(alliance_referral_bounty));
+    const { olympusWallet, olympusEarnings, referralWallet, updatedCombinedWallet, isReinvestment, } = deductFromWallets(requestedAmount, combinedEarnings, Number(alliance_olympus_wallet), Number(alliance_olympus_earnings), Number(alliance_referral_bounty));
     const packagePercentage = new Prisma.Decimal(Number(packageData.package_percentage)).div(100);
     const packageAmountEarnings = new Prisma.Decimal(requestedAmount).mul(packagePercentage);
     // Generate referral chain with a capped depth
@@ -414,7 +414,6 @@ function getBonusPercentage(level) {
 function deductFromWallets(amount, combinedWallet, olympusWallet, olympusEarnings, referralWallet) {
     let remaining = amount;
     let isReinvestment = false;
-    let reinvestmentAmount = 0;
     // Validate total funds
     if (combinedWallet < amount) {
         throw new Error("Insufficient balance in combined wallet.");
@@ -432,12 +431,12 @@ function deductFromWallets(amount, combinedWallet, olympusWallet, olympusEarning
     if (remaining > 0) {
         if (olympusEarnings >= remaining) {
             isReinvestment = true;
-            reinvestmentAmount = remaining;
             olympusEarnings -= remaining;
             remaining = 0;
         }
         else {
             remaining -= olympusEarnings;
+            isReinvestment = true;
             olympusEarnings = 0;
         }
     }
@@ -462,7 +461,6 @@ function deductFromWallets(amount, combinedWallet, olympusWallet, olympusEarning
         olympusEarnings,
         referralWallet,
         isReinvestment,
-        reinvestmentAmount,
         updatedCombinedWallet: combinedWallet - amount,
     };
 }

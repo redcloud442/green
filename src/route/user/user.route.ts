@@ -13,6 +13,7 @@ import {
   userProfilePutController,
   userPutController,
   userSponsorController,
+  userTreeController,
 } from "./user.controller.js";
 import {
   userActiveListMiddleware,
@@ -28,6 +29,7 @@ import {
   userProfilePutMiddleware,
   userPutMiddleware,
   userSponsorMiddleware,
+  userTreeMiddleware,
 } from "./user.middleware.js";
 
 const user = new Hono();
@@ -53,6 +55,8 @@ user.put(
   userChangePasswordMiddleware,
   userChangePasswordController
 );
+
+user.get("/:id/tree", userTreeMiddleware, userTreeController);
 
 user.post(
   "/generate-link",

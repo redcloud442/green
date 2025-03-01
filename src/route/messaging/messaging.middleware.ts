@@ -11,7 +11,12 @@ import { rateLimit } from "../../utils/redis.js";
 export const messagingPostMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
 
-  const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 50, 60);
+  const isAllowed = await rateLimit(
+    `rate-limit:${user.id}:email-post`,
+    50,
+    "1m",
+    c
+  );
 
   if (!isAllowed) {
     return sendErrorResponse("Too Many Requests", 429);
@@ -42,7 +47,12 @@ export const messagingBatchPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 50, 60);
+  const isAllowed = await rateLimit(
+    `rate-limit:${user.id}:email-post`,
+    50,
+    "1m",
+    c
+  );
 
   if (!isAllowed) {
     return sendErrorResponse("Too Many Requests", 429);

@@ -9,7 +9,7 @@ export const notificationPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 10, 60);
+    const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 10, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -31,7 +31,7 @@ export const notificationPutMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:notification-get`, 10, 60);
+    const isAllowed = await rateLimit(`rate-limit:${user.id}:notification-get`, 10, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -52,7 +52,7 @@ export const notificationGetMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:notification-get`, 10, 60);
+    const isAllowed = await rateLimit(`rate-limit:${user.id}:notification-get`, 10, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -75,7 +75,7 @@ export const notificationPutNotificationMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:notification-get`, 10, 60);
+    const isAllowed = await rateLimit(`rate-limit:${user.id}:notification-get`, 10, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

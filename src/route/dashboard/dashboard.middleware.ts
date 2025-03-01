@@ -23,7 +23,8 @@ export const dashboardPostMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:dashboard-post`,
     100,
-    60
+    "1m",
+    c
   );
 
   if (!isAllowed) {
@@ -62,7 +63,8 @@ export const dashboardGetMiddleware = async (c: Context, next: Next) => {
   const isAllowed = await rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:dashboard-get`,
     100,
-    60
+    "1m",
+    c
   );
 
   if (!isAllowed) {

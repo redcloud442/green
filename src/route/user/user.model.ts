@@ -1,5 +1,3 @@
-import type { UserRequestdata } from "../../utils/types.js";
-
 import {
   Prisma,
   type alliance_member_table,
@@ -9,7 +7,9 @@ import {
 import bcryptjs from "bcryptjs";
 import { getPhilippinesTime } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
+import { redis } from "../../utils/redis.js";
 import { supabaseClient } from "../../utils/supabase.js";
+import type { UserRequestdata } from "../../utils/types.js";
 
 export const userModelPut = async (params: {
   userId: string;
@@ -149,6 +149,7 @@ export const userModelPost = async (params: { memberId: string }) => {
     incomeTags.find((tag) => earnings >= tag.threshold)?.tag || null;
 
   const currentRank = userRaking ? userRaking.alliance_rank : null;
+
   const currentIncomeTag = userRaking
     ? userRaking.alliance_total_income_tag
     : null;
@@ -191,6 +192,7 @@ export const userModelPost = async (params: { memberId: string }) => {
     });
   }
   const tags = [];
+
   if (applicableIncomeTag) tags.push(applicableIncomeTag);
 
   const totalEarnings = {
@@ -534,16 +536,41 @@ export const userActiveListModel = async (params: {
   search: string;
   columnAccessor: string;
   isAscendingSort: boolean;
+  type: "DAILY" | "WEEKLY";
 }) => {
-  const { page, limit, search, columnAccessor, isAscendingSort } = params;
+  const { page, limit, search, columnAccessor, isAscendingSort, type } = params;
 
   const offset = (page - 1) * limit;
-
   const sortBy = isAscendingSort ? "ASC" : "DESC";
 
-  const orderBy = columnAccessor
+  // Initialize dates
+  let startDate: string | null = null;
+  let endDate: string | null = null;
+
+  if (type === "WEEKLY") {
+    // End date is today
+    const today = new Date(getPhilippinesTime(new Date(), "start"));
+    endDate = today.toISOString();
+
+    // Start date is 7 days before the end date
+    const startDateObject = new Date(today);
+    startDateObject.setDate(today.getDate() - 7);
+
+    startDate = startDateObject.toISOString();
+  }
+
+  const allowedColumns = new Set([
+    "user_username",
+    "user_first_name",
+    "user_last_name",
+    "alliance_olympus_wallet",
+  ]);
+
+  const orderBy = allowedColumns.has(columnAccessor)
     ? Prisma.sql`ORDER BY ${Prisma.raw(columnAccessor)} ${Prisma.raw(sortBy)}`
     : Prisma.empty;
+
+  // Build search condition dynamically
   const searchCondition = search
     ? Prisma.sql`
         AND (
@@ -554,6 +581,19 @@ export const userActiveListModel = async (params: {
       `
     : Prisma.empty;
 
+  const dateConditions = Prisma.sql`
+    ${
+      startDate
+        ? Prisma.sql`AND (pml.package_member_connection_created IS NULL OR pml.package_member_connection_created < ${startDate}::timestamptz)`
+        : Prisma.empty
+    }
+    ${
+      endDate
+        ? Prisma.sql`AND (pml.package_member_connection_created IS NULL OR pml.package_member_connection_created > ${endDate}::timestamptz)`
+        : Prisma.empty
+    }
+  `;
+
   const usersWithActiveWallet: user_table[] = await prisma.$queryRaw`
     SELECT 
       ut.user_id,
@@ -561,39 +601,46 @@ export const userActiveListModel = async (params: {
       ut.user_first_name,
       ut.user_last_name,
       ut.user_profile_picture,
-      am.alliance_member_is_active
+      ae.alliance_olympus_wallet
     FROM user_schema.user_table ut
     JOIN alliance_schema.alliance_member_table am
       ON ut.user_id = am.alliance_member_user_id
     LEFT JOIN alliance_schema.alliance_earnings_table ae
       ON ae.alliance_earnings_member_id = am.alliance_member_id
+    LEFT JOIN packages_schema.package_member_connection_table pml
+      ON pml.package_member_member_id = am.alliance_member_id
     WHERE 
-      ae.alliance_combined_earnings > 0
+      pml.package_member_member_id IS NULL
+      ${dateConditions}
+      AND ae.alliance_olympus_wallet > 0
       ${searchCondition}
       ${orderBy}
     LIMIT ${limit}
     OFFSET ${offset}
   `;
 
+  // Query to get total count
   const totalCount: { count: bigint }[] = await prisma.$queryRaw`
-    SELECT 
-      COUNT(*)
+    SELECT COUNT(*)
     FROM user_schema.user_table ut
     JOIN alliance_schema.alliance_member_table am
       ON ut.user_id = am.alliance_member_user_id
     LEFT JOIN alliance_schema.alliance_earnings_table ae
       ON ae.alliance_earnings_member_id = am.alliance_member_id
-      WHERE 
-      ae.alliance_combined_earnings > 0
+    LEFT JOIN packages_schema.package_member_connection_table pml
+      ON pml.package_member_member_id = am.alliance_member_id
+    WHERE 
+      pml.package_member_member_id IS NULL
+      ${dateConditions}
+      AND ae.alliance_olympus_wallet > 0
       ${searchCondition}
-    `;
+  `;
 
   return {
     data: usersWithActiveWallet,
     totalCount: Number(totalCount[0]?.count ?? 0),
   };
 };
-
 export const userChangePasswordModel = async (params: {
   password: string;
   userId: string;
@@ -771,4 +818,67 @@ export const userListReinvestedModel = async (params: {
   `;
 
   return { data, totalCount: Number(totalCount[0]?.count ?? 0) };
+};
+
+export const userTreeModel = async (params: { memberId: string }) => {
+  const { memberId } = params;
+
+  const cacheKey = `referral-tree-${memberId}`;
+
+  const cachedData = await redis.get(cacheKey);
+
+  if (cachedData) {
+    return cachedData;
+  }
+
+  const userTree = await prisma.alliance_referral_table.findUnique({
+    where: { alliance_referral_member_id: memberId },
+    select: {
+      alliance_referral_hierarchy: true,
+    },
+  });
+
+  if (!userTree || !userTree.alliance_referral_hierarchy) {
+    return { success: false, error: "User not found" };
+  }
+
+  const rawHierarchy = userTree.alliance_referral_hierarchy.split(".");
+
+  const orderedHierarchy = [
+    memberId,
+    ...rawHierarchy.filter((id) => id !== memberId).reverse(),
+  ];
+
+  // Fetch user data from alliance_member_table
+  const userTreeData = await prisma.alliance_member_table.findMany({
+    where: { alliance_member_id: { in: orderedHierarchy } },
+    select: {
+      alliance_member_id: true,
+      user_table: {
+        select: {
+          user_username: true,
+          user_id: true,
+        },
+      },
+    },
+  });
+
+  const formattedUserTreeData = orderedHierarchy
+    .map((id) => {
+      const user = userTreeData.find((user) => user.alliance_member_id === id);
+      return user
+        ? {
+            alliance_member_id: user.alliance_member_id,
+            user_id: user.user_table.user_id,
+            user_username: user.user_table.user_username,
+          }
+        : null;
+    })
+    .filter(Boolean);
+
+  await redis.set(cacheKey, JSON.stringify(formattedUserTreeData), {
+    ex: 60 * 60 * 24 * 30,
+  });
+
+  return formattedUserTreeData;
 };

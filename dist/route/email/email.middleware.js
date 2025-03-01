@@ -5,7 +5,7 @@ import { protectionAdmin } from "../../utils/protection.js";
 import { rateLimit } from "../../utils/redis.js";
 export const emailPostMiddleware = async (c, next) => {
     const user = c.get("user");
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 50, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -35,7 +35,7 @@ export const emailBatchPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 50, 60);
+    const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 50, "1m", c);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

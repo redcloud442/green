@@ -1,6 +1,5 @@
 import { serve } from "@hono/node-server";
 import { createServerClient, parseCookieHeader } from "@supabase/ssr";
-import { Redis } from "@upstash/redis";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -11,7 +10,6 @@ import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
 import route from "./route/route.js";
 import prisma from "./utils/prisma.js";
-import { rateLimit } from "./utils/redis.js";
 const app = new Hono();
 
 app.use(
@@ -76,16 +74,6 @@ io.use((socket, next) => {
   });
 });
 
-const redisPub = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
-
-const redisSub = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
-
 io.on("connection", async (socket) => {
   socket.on("joinRoom", async ({ roomId }) => {
     console.log("joinRoom", roomId);
@@ -144,20 +132,9 @@ io.on("connection", async (socket) => {
   socket.on("sendMessage", async (message) => {
     const teamMemberProfile = socket.data.teamMemberProfile;
 
-    const isAllowed = await rateLimit(
-      `rate-limit:${teamMemberProfile.alliance_member_id}:chat-message-`,
-      10,
-      60
-    );
-
-    if (!isAllowed) {
-      return socket.emit("error", "Too Many Requests");
-    }
-
     const data = await prisma.chat_message_table.create({
       data: { ...message },
     });
-    console.log("data", data);
 
     io.to(data.chat_message_session_id).emit("newMessage", message);
   });

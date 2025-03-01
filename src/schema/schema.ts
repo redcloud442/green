@@ -164,6 +164,10 @@ export const userSponsorSchema = z.object({
   userId: z.string().uuid(),
 });
 
+export const userTreeSchema = z.object({
+  memberId: z.string().uuid(),
+});
+
 export const userListSchema = z.object({
   page: z.number().min(1),
   limit: z.number().min(1).max(10),
@@ -173,6 +177,7 @@ export const userListSchema = z.object({
   userRole: z.string().optional(),
   dateCreated: z.string().optional(),
   bannedUser: z.boolean().optional(),
+  type: z.enum(["DAILY", "WEEKLY"]).optional(),
 });
 
 export const userActiveListSchema = z.object({
@@ -513,5 +518,3 @@ export const chatMessageSchema = z.object({
 export const missionPostSchema = z.object({
   missionId: z.string().uuid(),
 });
-
-
