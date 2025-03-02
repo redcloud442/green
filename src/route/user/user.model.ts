@@ -139,6 +139,7 @@ export const userModelPost = async (params: { memberId: string }) => {
     { threshold: 2000000, tag: "Multi Millionaire" },
     { threshold: 1000000, tag: "Millionaire" },
     { threshold: 500000, tag: "500k earner" },
+    { threshold: 300000, tag: "300k earner" },
     { threshold: 100000, tag: "100k earner" },
     { threshold: 50000, tag: "50k earner" },
   ];
