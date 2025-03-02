@@ -1,4 +1,5 @@
 import prisma from "../../utils/prisma.js";
+import { redis } from "../../utils/redis.js";
 const rankMapping = [
     { index: 1, threshold: 3, rank: "iron" },
     { index: 2, threshold: 6, rank: "bronze" },
@@ -13,6 +14,11 @@ const rankMapping = [
 export const getMissions = async (params) => {
     const { teamMemberProfile } = params;
     const allianceMemberId = teamMemberProfile.alliance_member_id;
+    const cacheKey = `mission-get-${allianceMemberId}`;
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+        return cachedData;
+    }
     let missionProgress = await prisma.alliance_mission_progress_table.findFirst({
         where: { alliance_member_id: allianceMemberId, is_completed: false },
         include: {
@@ -314,6 +320,7 @@ export const getMissions = async (params) => {
         tasks: updatedTasks,
         isMissionCompleted,
     };
+    await redis.set(cacheKey, JSON.stringify(returnData), { ex: 100 });
     return returnData;
 };
 export const postMission = async (params) => {

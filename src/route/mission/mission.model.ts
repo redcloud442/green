@@ -1,6 +1,6 @@
-import { redis } from "@/utils/redis.js";
 import type { alliance_member_table } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
+import { redis } from "../../utils/redis.js";
 
 const rankMapping = [
   { index: 1, threshold: 3, rank: "iron" },

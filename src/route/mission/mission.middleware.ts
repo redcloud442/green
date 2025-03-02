@@ -7,9 +7,15 @@ import { rateLimit } from "../../utils/redis.js";
 export const missionMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
 
-  const teamMemberProfile = await protectionMemberUser(user.id, prisma);
+  const response = await protectionMemberUser(user.id, prisma);
 
-  if (!teamMemberProfile) {
+  if (response instanceof Response) {
+    return response;
+  }
+
+  const { teamMemberProfile } = response;
+
+  if (!teamMemberProfile || !teamMemberProfile.alliance_member_is_active) {
     return sendErrorResponse("Unauthorized", 401);
   }
 
@@ -24,7 +30,7 @@ export const missionMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Too Many Requests", 429);
   }
 
-  c.set("teamMemberProfile", teamMemberProfile);
+  c.set("teamMemberProfile", { teamMemberProfile });
 
   return await next();
 };
@@ -32,9 +38,15 @@ export const missionMiddleware = async (c: Context, next: Next) => {
 export const missionPostMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
 
-  const teamMemberProfile = await protectionMemberUser(user.id, prisma);
+  const response = await protectionMemberUser(user.id, prisma);
 
-  if (!teamMemberProfile) {
+  if (response instanceof Response) {
+    return response;
+  }
+
+  const { teamMemberProfile } = response;
+
+  if (!teamMemberProfile || !teamMemberProfile.alliance_member_is_active) {
     return sendErrorResponse("Unauthorized", 401);
   }
 
@@ -49,7 +61,7 @@ export const missionPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Too Many Requests", 429);
   }
 
-  c.set("teamMemberProfile", teamMemberProfile);
+  c.set("teamMemberProfile", { teamMemberProfile });
 
   return await next();
 };
