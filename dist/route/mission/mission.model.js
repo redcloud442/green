@@ -194,12 +194,13 @@ export const getMissions = async (params) => {
         const taskTarget = task.alliance_mission_task_target;
         const rankEntry = rankMapping.find((r) => r.index >= taskTarget);
         const requiredRank = rankEntry?.rank ?? null;
+        const userRankIndex = rankMapping.findIndex((r) => r.rank === allianceRanking?.alliance_rank);
+        const requiredRankIndex = rankMapping.findIndex((r) => r.rank === requiredRank);
         switch (task.alliance_mission_task_type) {
             case "PACKAGE":
                 return ((packageAmount?._sum?.package_member_amount ?? 0) >= taskTarget);
             case "BADGE":
-                return (requiredRank !== null &&
-                    allianceRanking?.alliance_rank === requiredRank);
+                return userRankIndex >= requiredRankIndex; // User has equal or higher rank
             case "WITHDRAWAL":
                 return withdrawalCount >= taskTarget;
             case "DIRECT INCOME":
@@ -245,11 +246,13 @@ export const getMissions = async (params) => {
     const updatedTasks = mission.tasks.map((task) => {
         const requiredRankEntry = rankMapping.find((r) => r.index === task.alliance_mission_task_target);
         const requiredRank = requiredRankEntry?.rank ?? null;
-        const hasRequiredRank = requiredRank !== null && allianceRanking?.alliance_rank === requiredRank;
+        const hasRequiredRank = requiredRank !== null && allianceRanking?.alliance_rank >= requiredRank;
+        const userRankIndex = rankMapping.findIndex((r) => r.rank === allianceRanking?.alliance_rank);
+        const requiredRankIndex = rankMapping.findIndex((r) => r.rank === requiredRank);
         const taskProgress = task.alliance_mission_task_type === "PACKAGE"
             ? packageAmount?._sum?.package_member_amount ?? 0
             : task.alliance_mission_task_type === "BADGE"
-                ? hasRequiredRank
+                ? userRankIndex >= requiredRankIndex
                     ? 1
                     : 0
                 : task.alliance_mission_task_type === "WITHDRAWAL"
