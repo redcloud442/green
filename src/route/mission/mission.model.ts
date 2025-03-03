@@ -446,7 +446,6 @@ export const postMission = async (params: {
 
   if (missionProgress.is_completed) return null;
 
-  // Check if all tasks are completed
   const isMissionCompleted =
     missionProgress.mission.tasks.length > 0 &&
     missionProgress.mission.tasks.every(
@@ -455,7 +454,6 @@ export const postMission = async (params: {
         task.task_progress.every((tp) => tp.is_completed)
     );
 
-  // If mission is completed, update progress and assign next mission
   if (isMissionCompleted) {
     await prisma.alliance_mission_progress_table.update({
       where: {
@@ -465,14 +463,12 @@ export const postMission = async (params: {
       data: { is_completed: true, reward_claimed: true },
     });
 
-    // Get already completed mission IDs
     const completedMissionIds =
       await prisma.alliance_mission_progress_table.findMany({
         where: { alliance_member_id: allianceMemberId },
         select: { alliance_mission_id: true },
       });
 
-    // Find the next mission
     const nextMission = await prisma.alliance_mission_table.findFirst({
       where: {
         alliance_mission_id: {
@@ -480,6 +476,15 @@ export const postMission = async (params: {
         },
       },
       orderBy: { alliance_mission_order: "asc" },
+    });
+
+    await prisma.alliance_transaction_table.create({
+      data: {
+        transaction_member_id: allianceMemberId,
+        transaction_amount: nextMission?.alliance_mission_reward ?? 0,
+        transaction_description: `Mission Completed: Mission ${missionProgress.mission.alliance_mission_order}`,
+        transaction_date: new Date(),
+      },
     });
 
     if (nextMission) {
@@ -593,7 +598,7 @@ export const postMission = async (params: {
 
   const packageData = await prisma.$transaction(async (tx) => {
     const findPeakPackage = await tx.package_table.findFirst({
-      where: { package_name: "Package 1" },
+      where: { package_name: "PEAK" },
     });
     if (!findPeakPackage) return null;
 
@@ -611,6 +616,15 @@ export const postMission = async (params: {
         package_member_completion_date: new Date(
           Date.now() + findPeakPackage.packages_days * 24 * 60 * 60 * 1000
         ),
+      },
+    });
+
+    await tx.alliance_transaction_table.create({
+      data: {
+        transaction_member_id: allianceMemberId,
+        transaction_amount: Number(packageRewardAmount),
+        transaction_description: `Package Claimed: ${findPeakPackage.package_name}`,
+        transaction_date: new Date(),
       },
     });
 
