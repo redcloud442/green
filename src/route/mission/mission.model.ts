@@ -483,7 +483,7 @@ export const postMission = async (params: {
         transaction_member_id: allianceMemberId,
         transaction_amount:
           missionProgress.mission.alliance_mission_reward ?? 0,
-        transaction_description: `Mission Completed: Mission ${missionProgress.mission.alliance_mission_order}`,
+        transaction_description: `Mission ${missionProgress.mission.alliance_mission_order} Completed: Mission ${missionProgress.mission.alliance_mission_order}`,
         transaction_date: new Date(),
       },
     });
