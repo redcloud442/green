@@ -481,7 +481,8 @@ export const postMission = async (params: {
     await prisma.alliance_transaction_table.create({
       data: {
         transaction_member_id: allianceMemberId,
-        transaction_amount: nextMission?.alliance_mission_reward ?? 0,
+        transaction_amount:
+          missionProgress.mission.alliance_mission_reward ?? 0,
         transaction_description: `Mission Completed: Mission ${missionProgress.mission.alliance_mission_order}`,
         transaction_date: new Date(),
       },
