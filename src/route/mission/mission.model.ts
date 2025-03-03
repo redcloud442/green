@@ -424,7 +424,6 @@ export const postMission = async (params: {
   const { teamMemberProfile } = params;
   const allianceMemberId = teamMemberProfile.alliance_member_id;
 
-  // Fetch the current incomplete mission progress
   let missionProgress = await prisma.alliance_mission_progress_table.findFirst({
     where: { alliance_member_id: allianceMemberId, is_completed: false },
     include: {
@@ -602,6 +601,10 @@ export const postMission = async (params: {
       where: { package_name: "PEAK" },
     });
     if (!findPeakPackage) return null;
+
+    if (missionProgress?.is_completed) {
+      throw new Error("Mission already completed");
+    }
 
     const packageReward = await tx.package_member_connection_table.create({
       data: {

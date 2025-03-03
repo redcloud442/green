@@ -404,6 +404,10 @@ export const claimPackagePostModel = async (params: {
       throw new Error("Invalid request. Package is not ready to claim.");
     }
 
+    if (packageConnection.package_member_status === "ENDED") {
+      throw new Error("Invalid request. Package is already ended.");
+    }
+
     const totalClaimedAmount =
       packageConnection.package_member_amount +
       packageConnection.package_amount_earnings;
