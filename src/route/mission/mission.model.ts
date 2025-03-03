@@ -623,7 +623,7 @@ export const postMission = async (params: {
       data: {
         transaction_member_id: allianceMemberId,
         transaction_amount: Number(packageRewardAmount),
-        transaction_description: `Package Claimed: ${findPeakPackage.package_name}`,
+        transaction_description: `Mission Reward Claimed: ${findPeakPackage.package_name}`,
         transaction_date: new Date(),
       },
     });
