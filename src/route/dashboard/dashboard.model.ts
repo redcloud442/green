@@ -19,9 +19,6 @@ export const dashboardPostModel = async (params: {
       ? getPhilippinesTime(new Date(dateFilter.end), "end")
       : getPhilippinesTime(new Date(), "end");
 
-    console.log(startDate);
-    console.log(endDate);
-
     const [
       totalEarnings,
       packageEarnings,

@@ -1,15 +1,14 @@
-import { serve } from "@hono/node-server";
-import { createServerClient, parseCookieHeader } from "@supabase/ssr";
 import { Hono } from "hono";
+import { createBunWebSocket } from "hono/bun";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import type { Server as HTTPSServer } from "node:http";
-import { Server as SocketIoServer } from "socket.io";
 import { envConfig } from "./env.js";
 import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
+import { protectionMiddleware } from "./middleware/protection.middleware.js";
 import route from "./route/route.js";
-import prisma from "./utils/prisma.js";
+import { redis } from "./utils/redis.js";
+
 const app = new Hono();
 
 app.use(
@@ -18,7 +17,7 @@ app.use(
   cors({
     origin: [
       process.env.NODE_ENV === "development"
-        ? "http://localhost:3000"
+        ? "http://localhost:3000, http://192.168.1.56:3000"
         : "https://elevateglobal.app",
     ],
 
@@ -29,145 +28,87 @@ app.use(
   })
 );
 
+const { upgradeWebSocket, websocket } = createBunWebSocket();
+
 app.get("/", (c) => {
-  return c.text("API endpoint is working!");
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>API Status</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+          }
+          .status {
+            font-size: 20px;
+            color: green;
+          }
+        </style>
+    </head>
+    <body>
+        <h1>API Status</h1>
+        <p class="status">✅ API is working perfectly!</p>
+        <p>Current Time: ${new Date().toLocaleString()}</p>
+    </body>
+    </html>
+  `);
 });
 
 app.onError(errorHandlerMiddleware);
 app.use(logger());
 
 app.route("/api/v1", route);
+const clients = new Set<WebSocket>();
 
-const server = serve({
-  fetch: app.fetch,
-  port: envConfig.PORT,
-});
-
-const io = new SocketIoServer(server as HTTPSServer);
-
-io.use((socket, next) => {
-  const authCookies = parseCookieHeader(socket.request.headers.cookie || "");
-  const supabase = createServerClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return authCookies;
-        },
-      },
-    }
-  );
-
-  supabase.auth.getUser().then(async ({ data }) => {
-    socket.data.user = data.user;
-
-    const teamMemberProfile = await prisma.alliance_member_table.findFirst({
-      where: {
-        alliance_member_user_id: socket.data.user?.id,
-      },
-    });
-
-    socket.data.teamMemberProfile = teamMemberProfile;
-
-    next();
-  });
-});
-
-io.on("connection", async (socket) => {
-  socket.on("joinRoom", async ({ roomId }) => {
-    console.log("joinRoom", roomId);
-    const teamMemberProfile = socket.data.teamMemberProfile;
-    socket.join(roomId);
-
-    if (teamMemberProfile?.alliance_member_role === "ADMIN") {
-      await prisma.$transaction(async (tx) => {
-        const existingMessages = await tx.chat_message_table.findMany({
-          where: { chat_message_session_id: roomId },
-          orderBy: { chat_message_date: "asc" },
-        });
-
-        if (existingMessages.length === 0) {
-          await tx.chat_message_table.create({
-            data: {
-              chat_message_content:
-                "Hi!, Welcome to elevate chat support. How can I help you today?",
-              chat_message_session_id: roomId,
-              chat_message_alliance_member_id:
-                teamMemberProfile?.alliance_member_id,
-              chat_message_date: new Date().toISOString(),
-              chat_message_sender_user: "Chat Support", // Pass the correct value here
-            },
-          });
-        }
-      });
-    }
-
-    const messages = await prisma.chat_message_table.findMany({
-      where: {
-        chat_message_session_id: roomId,
-      },
-      orderBy: {
-        chat_message_date: "asc",
-      },
-    });
-
-    io.to(roomId).emit("messages", messages);
-  });
-
-  socket.on("acceptSupportSession", async ({ sessionId }) => {
-    // Leave any previous room to avoid conflicts
-    const rooms = Array.from(socket.rooms);
-    rooms.forEach((room) => {
-      if (room !== socket.id) {
-        socket.leave(room);
+async function listenForRedisMessages() {
+  while (true) {
+    try {
+      const message = await redis.rpop("websocket-channel");
+      console.log(message);
+      if (message) {
+        console.log("test");
+        try {
+          for (const client of clients) {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(message));
+            }
+          }
+        } catch (err) {}
       }
-    });
+    } catch (error) {}
+  }
+}
 
-    // Join the new session room
-    socket.join(sessionId);
-    io.to(sessionId).emit("supportSessionAccepted", { sessionId });
-  });
-
-  socket.on("sendMessage", async (message) => {
-    const teamMemberProfile = socket.data.teamMemberProfile;
-
-    const data = await prisma.chat_message_table.create({
-      data: { ...message },
-    });
-
-    io.to(data.chat_message_session_id).emit("newMessage", message);
-  });
-
-  socket.on("endSupport", async (sessionId) => {
-    await prisma.chat_session_table.update({
-      where: { chat_session_id: sessionId },
-      data: { chat_session_status: "SUPPORT ENDED" },
-    });
-
-    let messages;
-
-    messages = await prisma.chat_message_table.create({
-      data: {
-        chat_message_content: "Support session ended",
-
-        chat_message_session_id: sessionId,
-        chat_message_alliance_member_id:
-          socket.data.teamMemberProfile?.alliance_member_id,
-        chat_message_date: new Date().toISOString(),
-        chat_message_sender_user: "Chat Support",
+app.get(
+  "/ws",
+  protectionMiddleware,
+  //@ts-ignore
+  upgradeWebSocket(() => {
+    return {
+      onOpen(evt: Event, ws: WebSocket) {
+        clients.add(ws);
       },
-    });
+      onMessage(event, ws) {
+        redis.lpush("websocket-channel", event.data).then(() => {
+          listenForRedisMessages();
+        });
+      },
+      onClose(ws: WebSocket) {
+        clients.delete(ws);
+      },
+    };
+  })
+);
 
-    socket.leave(sessionId);
-    io.to(sessionId).emit("endSupport", { sessionId, messages });
-  });
+listenForRedisMessages();
 
-  socket.on("disconnect", () => {
-    console.log("disconnect");
-  });
-});
-
-export default io;
-
-console.log(`Server is running on port ${envConfig.PORT}`);
+export default {
+  port: envConfig.PORT || 9000,
+  fetch: app.fetch,
+  websocket,
+};
