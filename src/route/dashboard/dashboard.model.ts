@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { getPhilippinesTime } from "../../utils/function.js";
+import { redis } from "../../utils/redis.js";
 
 const prisma = new PrismaClient();
 
@@ -261,6 +262,13 @@ export const dashboardPostModel = async (params: {
 };
 
 export const dashboardGetModel = async () => {
+  const cacheKey = `dashboard-get`;
+
+  const cachedData = await redis.get(cacheKey);
+  if (cachedData) {
+    return cachedData;
+  }
+
   const [totalActivatedPackage, numberOfRegisteredUser, totalActivatedUser] =
     await prisma.$transaction([
       prisma.package_member_connection_table.count(),
@@ -272,9 +280,13 @@ export const dashboardGetModel = async () => {
       }),
     ]);
 
-  return {
+  const data = {
     numberOfRegisteredUser,
     totalActivatedPackage,
     totalActivatedUser,
   };
+
+  await redis.set(cacheKey, JSON.stringify(data));
+
+  return data;
 };
