@@ -1,5 +1,4 @@
 import prisma from "../../utils/prisma.js";
-import { redis } from "../../utils/redis.js";
 const rankMapping = [
     { index: 1, threshold: 3, rank: "iron" },
     { index: 2, threshold: 6, rank: "bronze" },
@@ -15,10 +14,6 @@ export const getMissions = async (params) => {
     const { teamMemberProfile } = params;
     const allianceMemberId = teamMemberProfile.alliance_member_id;
     const cacheKey = `mission-get-${allianceMemberId}`;
-    const cachedData = await redis.get(cacheKey);
-    if (cachedData) {
-        return cachedData;
-    }
     let missionProgress = await prisma.alliance_mission_progress_table.findFirst({
         where: { alliance_member_id: allianceMemberId, is_completed: false },
         include: {
@@ -323,13 +318,11 @@ export const getMissions = async (params) => {
         tasks: updatedTasks,
         isMissionCompleted,
     };
-    await redis.set(cacheKey, JSON.stringify(returnData), { ex: 100 });
     return returnData;
 };
 export const postMission = async (params) => {
     const { teamMemberProfile } = params;
     const allianceMemberId = teamMemberProfile.alliance_member_id;
-    // Fetch the current incomplete mission progress
     let missionProgress = await prisma.alliance_mission_progress_table.findFirst({
         where: { alliance_member_id: allianceMemberId, is_completed: false },
         include: {
@@ -375,8 +368,8 @@ export const postMission = async (params) => {
         await prisma.alliance_transaction_table.create({
             data: {
                 transaction_member_id: allianceMemberId,
-                transaction_amount: nextMission?.alliance_mission_reward ?? 0,
-                transaction_description: `Mission Completed: Mission ${missionProgress.mission.alliance_mission_order}`,
+                transaction_amount: missionProgress.mission.alliance_mission_reward ?? 0,
+                transaction_description: `Mission ${missionProgress.mission.alliance_mission_order} Completed: Mission ${missionProgress.mission.alliance_mission_order}`,
                 transaction_date: new Date(),
             },
         });
@@ -478,6 +471,9 @@ export const postMission = async (params) => {
         });
         if (!findPeakPackage)
             return null;
+        if (missionProgress?.reward_claimed) {
+            throw new Error("Mission already completed");
+        }
         const packageReward = await tx.package_member_connection_table.create({
             data: {
                 package_member_member_id: allianceMemberId,
@@ -495,7 +491,7 @@ export const postMission = async (params) => {
             data: {
                 transaction_member_id: allianceMemberId,
                 transaction_amount: Number(packageRewardAmount),
-                transaction_description: `Package Claimed: ${findPeakPackage.package_name}`,
+                transaction_description: `Mission Reward Claimed: ${findPeakPackage.package_name}`,
                 transaction_date: new Date(),
             },
         });
