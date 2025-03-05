@@ -3,15 +3,19 @@ import { claimPackagePostModel, packageCreatePostModel, packageGetModel, package
 export const packagePostController = async (c) => {
     try {
         const { amount, packageId } = await c.req.json();
+        const user = c.get("user");
+        console.log(user);
         const teamMemberProfile = c.get("teamMemberProfile");
         await packagePostModel({
             amount,
             packageId,
             teamMemberProfile: teamMemberProfile,
+            user: user,
         });
         return c.json({ message: "Package Availed" });
     }
     catch (error) {
+        console.log(error);
         return sendErrorResponse("Internal Server Error", 500);
     }
 };

@@ -7,7 +7,7 @@ import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
 import { protectionMiddleware } from "./middleware/protection.middleware.js";
 import route from "./route/route.js";
-import { redis } from "./utils/redis.js";
+import { redis, redisSubscriber } from "./utils/redis.js";
 
 const app = new Hono();
 
@@ -63,25 +63,30 @@ app.onError(errorHandlerMiddleware);
 app.use(logger());
 
 app.route("/api/v1", route);
-const clients = new Set<WebSocket>();
+
+const clients = new Map<string, WebSocket>();
 
 async function listenForRedisMessages() {
-  while (true) {
-    try {
-      const messages = await redis.lrange("websocket-channel", 0, -1);
+  try {
+    await redisSubscriber.subscribe("package-purchased");
+    console.log("✅ Redis subscribed to package-purchased");
 
-      console.log(messages);
-      if (messages.length > 0) {
-        console.log("test");
-        try {
-          for (const client of clients) {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify(messages));
-            }
+    redisSubscriber.on("message", async (channel, message) => {
+      if (channel === "package-purchased") {
+        const clientIds = await redis.smembers("websocket-clients");
+
+        for (const clientId of clientIds) {
+          const client = clients.get(clientId);
+          if (client?.readyState === WebSocket.OPEN) {
+            client.send(
+              JSON.stringify({ event: "package-purchased", data: message })
+            );
           }
-        } catch (err) {}
+        }
       }
-    } catch (error) {}
+    });
+  } catch (err) {
+    console.error("❌ Error subscribing to Redis:", err);
   }
 }
 
@@ -89,18 +94,22 @@ app.get(
   "/ws",
   protectionMiddleware,
   //@ts-ignore
-  upgradeWebSocket(() => {
+  upgradeWebSocket((c) => {
     return {
-      onOpen(evt: Event, ws: WebSocket) {
-        clients.add(ws);
+      async onOpen(evt: Event, ws: WebSocket & { id?: string }) {
+        const { id } = c.get("user");
+        ws.id = id;
+        clients.set(id, ws);
+        await redis.sadd("websocket-clients", id);
       },
       onMessage(event, ws) {
-        redis.lpush("websocket-channel", event.data).then(() => {
-          listenForRedisMessages();
-        });
+        ws.send(event.data as string);
       },
-      onClose(ws: WebSocket) {
-        clients.delete(ws);
+      onClose(ws: WebSocket & { id?: string }) {
+        if (ws.id) {
+          redis.srem("websocket-clients", ws.id);
+          clients.delete(ws.id);
+        }
       },
     };
   })

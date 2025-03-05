@@ -1,6 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import type { Context } from "hono";
+import { Redis as RedisSubscriber } from "ioredis";
 
 // Ensure environment variables are set correctly
 if (
@@ -16,6 +17,12 @@ export const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
+export const redisSubscriber = new RedisSubscriber(
+  "rediss://default:AZNHAAIjcDFiYzhjMTJlOTU2MTU0ZWMxYjczNzkzOGM4YmMwY2U3MnAxMA@perfect-mosquito-37703.upstash.io:6379",
+  {
+    keyPrefix: "package-purchased",
+  }
+);
 // Cache rate limiter instances to avoid recreating them per request
 const rateLimiterInstances = new Map<string, Ratelimit>();
 

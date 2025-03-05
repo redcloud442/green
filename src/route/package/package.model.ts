@@ -239,20 +239,23 @@ export const packagePostModel = async (params: {
       },
     });
   }
-  if (isFromWallet) {
-    const message = JSON.stringify({
-      type: "package-purchased",
-      message: `${user.user_username} invested ₱ ${amount.toLocaleString(
-        "en-US",
-        {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }
-      )}: ${packageData.package_name} Package. Congratulations!`,
-    });
 
-    await redis.lpush("websocket-channel", message);
+  if (isFromWallet) {
+    const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
+      "en-US",
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    )}: ${packageData.package_name} Package. Congratulations!`;
+
+    try {
+      await redis.publish("package-purchased", message);
+    } catch (error) {
+      console.error("Redis Error:", error);
+    }
   }
+
   return true;
 };
 

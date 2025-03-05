@@ -46,6 +46,7 @@ export const protectionMemberUser = async (userId, prisma) => {
         }
         return {
             teamMemberProfile: teamMember,
+            user: profile,
         };
     }
     catch (e) {
