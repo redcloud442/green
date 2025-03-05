@@ -2,6 +2,7 @@ import { createServerClient, parseCookieHeader } from "@supabase/ssr";
 import type { Context, MiddlewareHandler } from "hono";
 import { env } from "hono/adapter";
 import { setCookie } from "hono/cookie";
+import type { CookieOptions } from "hono/utils/cookie";
 
 export const getSupabase = (c: Context) => {
   return c.get("supabase");
@@ -33,7 +34,7 @@ export const supabaseMiddleware = (): MiddlewareHandler => {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) =>
-            setCookie(c, name, value, options)
+            setCookie(c, name, value, options as CookieOptions)
           );
         },
       },
