@@ -68,14 +68,15 @@ const clients = new Set<WebSocket>();
 async function listenForRedisMessages() {
   while (true) {
     try {
-      const message = await redis.rpop("websocket-channel");
-      console.log(message);
-      if (message) {
+      const messages = await redis.lrange("websocket-channel", 0, -1);
+
+      console.log(messages);
+      if (messages.length > 0) {
         console.log("test");
         try {
           for (const client of clients) {
             if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify(message));
+              client.send(JSON.stringify(messages));
             }
           }
         } catch (err) {}
