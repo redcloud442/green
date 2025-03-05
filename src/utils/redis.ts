@@ -6,7 +6,8 @@ import { Redis as RedisSubscriber } from "ioredis";
 // Ensure environment variables are set correctly
 if (
   !process.env.UPSTASH_REDIS_REST_URL ||
-  !process.env.UPSTASH_REDIS_REST_TOKEN
+  !process.env.UPSTASH_REDIS_REST_TOKEN ||
+  !process.env.REDIS_SUBSCRIBER_URL
 ) {
   throw new Error("Upstash Redis credentials are missing.");
 }
@@ -18,7 +19,7 @@ export const redis = new Redis({
 });
 
 export const redisSubscriber = new RedisSubscriber(
-  "rediss://default:AZNHAAIjcDFiYzhjMTJlOTU2MTU0ZWMxYjczNzkzOGM4YmMwY2U3MnAxMA@perfect-mosquito-37703.upstash.io:6379",
+  process.env.REDIS_SUBSCRIBER_URL,
   {
     keyPrefix: "package-purchased",
   }
