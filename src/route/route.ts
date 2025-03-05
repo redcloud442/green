@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { protectionMiddleware } from "../middleware/protection.middleware.js";
 import auth from "./auth/auth.route.js";
-import chat from "./chat/chat.route.js";
 import dashboard from "./dashboard/dashboard.route.js";
 import deposit from "./deposit/deposit.route.js";
 import email from "./email/email.route.js";
@@ -78,14 +77,37 @@ app.route("/email", email);
 app.use("/notification/*", protectionMiddleware);
 app.route("/notification", notification);
 
-//chat route
-app.use("/chat/*", protectionMiddleware);
-app.route("/chat", chat);
-
 //mission route
 app.use("/mission/*", protectionMiddleware);
 app.route("/mission", mission);
 
-app.get("/", (c) => c.text("This is the api endpoint"));
+app.get("/", (c) => {
+  return c.html(`
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>API Status</title>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  text-align: center;
+                  padding: 50px;
+                }
+                .status {
+                  font-size: 20px;
+                  color: green;
+                }
+              </style>
+          </head>
+          <body>
+              <h1>API Status</h1>
+              <p class="status">✅ API Routes is working perfectly!</p>
+              <p>Current Time: ${new Date().toLocaleString()}</p>
+          </body>
+          </html>
+        `);
+});
 
 export default app;
