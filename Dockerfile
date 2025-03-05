@@ -63,4 +63,4 @@ EXPOSE 3000
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Default command to start the app
-CMD ["node", "/app/dist/index.js"]
+CMD ["node", "prod"]

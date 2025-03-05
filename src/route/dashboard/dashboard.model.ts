@@ -278,3 +278,90 @@ export const dashboardGetModel = async () => {
     totalActivatedUser,
   };
 };
+
+export const dashboardPostClientModel = async (params: {
+  dateFilter?: { start?: string; end?: string };
+}) => {
+  return await prisma.$transaction(async (tx) => {
+    const { dateFilter } = params;
+
+    const startDate = dateFilter?.start
+      ? new Date(
+          getPhilippinesTime(new Date(dateFilter.start), "start")
+        ).toISOString()
+      : getPhilippinesTime(
+          new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          "start"
+        );
+
+    const endDate = dateFilter?.end
+      ? getPhilippinesTime(new Date(dateFilter.end), "end")
+      : getPhilippinesTime(
+          new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
+          "end"
+        );
+
+    const [dailyEarnings, monthlyEarnings, dailyWithdraw, monthlyWithdraw] =
+      await Promise.all([
+        // Daily earnings
+        tx.alliance_top_up_request_table.aggregate({
+          _sum: { alliance_top_up_request_amount: true },
+          where: {
+            alliance_top_up_request_date_updated: {
+              gte: getPhilippinesTime(new Date(), "start"),
+              lte: getPhilippinesTime(new Date(), "end"),
+            },
+            alliance_top_up_request_status: "APPROVED",
+          },
+        }),
+
+        tx.alliance_top_up_request_table.aggregate({
+          _sum: { alliance_top_up_request_amount: true },
+          where: {
+            alliance_top_up_request_date_updated: {
+              gte: startDate,
+              lte: endDate,
+            },
+            alliance_top_up_request_status: "APPROVED",
+          },
+        }),
+
+        // Daily withdrawals
+        tx.alliance_withdrawal_request_table.aggregate({
+          _sum: {
+            alliance_withdrawal_request_amount: true,
+            alliance_withdrawal_request_fee: true,
+          },
+          where: {
+            alliance_withdrawal_request_status: "APPROVED",
+            alliance_withdrawal_request_date_updated: {
+              gte: getPhilippinesTime(new Date(), "start"),
+              lte: getPhilippinesTime(new Date(), "end"),
+            },
+          },
+        }),
+
+        // Monthly withdrawals (using computed startDate & endDate)
+        tx.alliance_withdrawal_request_table.aggregate({
+          _sum: {
+            alliance_withdrawal_request_amount: true,
+            alliance_withdrawal_request_fee: true,
+          },
+          where: {
+            alliance_withdrawal_request_status: "APPROVED",
+            alliance_withdrawal_request_date_updated: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+        }),
+      ]);
+
+    return {
+      dailyEarnings,
+      monthlyEarnings,
+      dailyWithdraw,
+      monthlyWithdraw,
+    };
+  });
+};

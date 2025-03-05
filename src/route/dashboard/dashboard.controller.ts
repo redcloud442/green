@@ -23,3 +23,14 @@ export const dashboardGetController = async (c: Context) => {
     return sendErrorResponse("Internal Server Error", 500);
   }
 };
+
+export const dashboardPostClientController = async (c: Context) => {
+  try {
+    const dateFilter = c.get("dateFilter");
+    const response = await dashboardPostModel({ dateFilter });
+
+    return c.json(response, 200);
+  } catch (error) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
