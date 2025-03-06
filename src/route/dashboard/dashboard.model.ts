@@ -283,7 +283,9 @@ export const dashboardGetModel = async () => {
     totalActivatedUser,
   };
 
-  await redis.set(cacheKey, JSON.stringify(data));
+  await redis.set(cacheKey, JSON.stringify(data), {
+    ex: 60 * 5, // 5 minutes
+  });
 
   return data;
 };
