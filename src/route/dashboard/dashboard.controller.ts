@@ -1,6 +1,10 @@
 import type { Context } from "hono";
 import { sendErrorResponse } from "../../utils/function.js";
-import { dashboardGetModel, dashboardPostModel } from "./dashboard.model.js";
+import {
+  dashboardGetModel,
+  dashboardPostClientModel,
+  dashboardPostModel,
+} from "./dashboard.model.js";
 
 export const dashboardPostController = async (c: Context) => {
   try {
@@ -27,7 +31,7 @@ export const dashboardGetController = async (c: Context) => {
 export const dashboardPostClientController = async (c: Context) => {
   try {
     const dateFilter = c.get("dateFilter");
-    const response = await dashboardPostModel({ dateFilter });
+    const response = await dashboardPostClientModel({ dateFilter });
 
     return c.json(response, 200);
   } catch (error) {

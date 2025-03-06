@@ -35,7 +35,7 @@ export const protectionMemberUser = async (
 
     if (
       !teamMember?.alliance_member_alliance_id ||
-      !["MEMBER", "MERCHANT", "ACCOUNTING", "ADMIN"].includes(
+      !["MEMBER", "MERCHANT", "ACCOUNTING", "ADMIN", "CLIENT"].includes(
         teamMember.alliance_member_role
       )
     ) {

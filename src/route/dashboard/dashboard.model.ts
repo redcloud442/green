@@ -313,67 +313,41 @@ export const dashboardPostClientModel = async (params: {
           "end"
         );
 
-    const [dailyEarnings, monthlyEarnings, dailyWithdraw, monthlyWithdraw] =
-      await Promise.all([
-        // Daily earnings
-        tx.alliance_top_up_request_table.aggregate({
-          _sum: { alliance_top_up_request_amount: true },
-          where: {
-            alliance_top_up_request_date_updated: {
-              gte: getPhilippinesTime(new Date(), "start"),
-              lte: getPhilippinesTime(new Date(), "end"),
-            },
-            alliance_top_up_request_status: "APPROVED",
-          },
-        }),
-
-        tx.alliance_top_up_request_table.aggregate({
-          _sum: { alliance_top_up_request_amount: true },
-          where: {
-            alliance_top_up_request_date_updated: {
-              gte: startDate,
-              lte: endDate,
-            },
-            alliance_top_up_request_status: "APPROVED",
-          },
-        }),
-
-        // Daily withdrawals
-        tx.alliance_withdrawal_request_table.aggregate({
-          _sum: {
-            alliance_withdrawal_request_amount: true,
-            alliance_withdrawal_request_fee: true,
-          },
-          where: {
-            alliance_withdrawal_request_status: "APPROVED",
-            alliance_withdrawal_request_date_updated: {
-              gte: getPhilippinesTime(new Date(), "start"),
-              lte: getPhilippinesTime(new Date(), "end"),
-            },
-          },
-        }),
-
-        // Monthly withdrawals (using computed startDate & endDate)
-        tx.alliance_withdrawal_request_table.aggregate({
-          _sum: {
-            alliance_withdrawal_request_amount: true,
-            alliance_withdrawal_request_fee: true,
-          },
-          where: {
-            alliance_withdrawal_request_status: "APPROVED",
-            alliance_withdrawal_request_date_updated: {
-              gte: startDate,
-              lte: endDate,
-            },
-          },
-        }),
-      ]);
+    const clientData = await tx.$queryRaw`
+      WITH daily_earnings AS (
+        SELECT DATE_TRUNC('day', alliance_top_up_request_date_updated AT TIME ZONE 'Asia/Manila') AS date,
+               SUM(COALESCE(alliance_top_up_request_amount, 0)) AS earnings
+        FROM alliance_schema.alliance_top_up_request_table
+        WHERE alliance_top_up_request_date_updated BETWEEN ${new Date(
+          startDate || new Date()
+        ).toISOString()}::timestamptz AND ${new Date(
+      endDate || new Date()
+    ).toISOString()}::timestamptz
+        AND alliance_top_up_request_status = 'APPROVED'
+        GROUP BY DATE_TRUNC('day', alliance_top_up_request_date_updated AT TIME ZONE 'Asia/Manila')
+      ),
+      daily_withdraw AS (
+        SELECT DATE_TRUNC('day', alliance_withdrawal_request_date_updated AT TIME ZONE 'Asia/Manila'  ) AS date,
+               SUM(COALESCE(alliance_withdrawal_request_amount, 0) - COALESCE(alliance_withdrawal_request_fee, 0)) AS withdraw
+        FROM alliance_schema.alliance_withdrawal_request_table
+        WHERE alliance_withdrawal_request_date_updated BETWEEN ${new Date(
+          startDate || new Date()
+        ).toISOString()}::timestamptz AND ${new Date(
+      endDate || new Date()
+    ).toISOString()}::timestamptz
+        AND alliance_withdrawal_request_status = 'APPROVED'
+        GROUP BY DATE_TRUNC('day', alliance_withdrawal_request_date_updated AT TIME ZONE 'Asia/Manila')
+      )
+      SELECT COALESCE(e.date, w.date) AS date,
+             COALESCE(e.earnings, 0) AS dailyEarnings,
+             COALESCE(w.withdraw, 0) AS dailyWithdraw
+      FROM daily_earnings e
+      FULL OUTER JOIN daily_withdraw w ON e.date = w.date
+      ORDER BY date;
+    `;
 
     return {
-      dailyEarnings,
-      monthlyEarnings,
-      dailyWithdraw,
-      monthlyWithdraw,
+      clientData,
     };
   });
 };
