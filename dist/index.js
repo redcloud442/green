@@ -18,7 +18,32 @@ app.use("*", supabaseMiddleware(), cors({
     exposeHeaders: ["Content-Range", "X-Total-Count"],
 }));
 app.get("/", (c) => {
-    return c.text("API endpoint is working!");
+    return c.html(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>API Status</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+          }
+          .status {
+            font-size: 20px;
+            color: green;
+          }
+        </style>
+    </head>
+    <body>
+        <h1>API Status</h1>
+        <p class="status">✅ API is working perfectly!</p>
+        <p>Current Time: ${new Date().toLocaleString()}</p>
+    </body>
+    </html>
+  `);
 });
 app.onError(errorHandlerMiddleware);
 app.use(logger());

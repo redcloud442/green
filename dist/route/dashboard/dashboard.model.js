@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { getPhilippinesTime } from "../../utils/function.js";
+import { redis } from "../../utils/redis.js";
 const prisma = new PrismaClient();
 export const dashboardPostModel = async (params) => {
     return await prisma.$transaction(async (tx) => {
@@ -158,6 +159,11 @@ export const dashboardPostModel = async (params) => {
     });
 };
 export const dashboardGetModel = async () => {
+    const cacheKey = `dashboard-get`;
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+        return cachedData;
+    }
     const [totalActivatedPackage, numberOfRegisteredUser, totalActivatedUser] = await prisma.$transaction([
         prisma.package_member_connection_table.count(),
         prisma.alliance_member_table.count(),
@@ -165,9 +171,49 @@ export const dashboardGetModel = async () => {
             where: { alliance_member_is_active: true },
         }),
     ]);
-    return {
+    const data = {
         numberOfRegisteredUser,
         totalActivatedPackage,
         totalActivatedUser,
     };
+    await redis.set(cacheKey, JSON.stringify(data));
+    return data;
+};
+export const dashboardPostClientModel = async (params) => {
+    return await prisma.$transaction(async (tx) => {
+        const { dateFilter } = params;
+        const startDate = dateFilter?.start
+            ? new Date(getPhilippinesTime(new Date(dateFilter.start), "start")).toISOString()
+            : getPhilippinesTime(new Date(new Date().getFullYear(), new Date().getMonth(), 1), "start");
+        const endDate = dateFilter?.end
+            ? getPhilippinesTime(new Date(dateFilter.end), "end")
+            : getPhilippinesTime(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), "end");
+        const clientData = await tx.$queryRaw `
+      WITH daily_earnings AS (
+        SELECT DATE_TRUNC('day', alliance_top_up_request_date_updated AT TIME ZONE 'Asia/Manila') AS date,
+               SUM(COALESCE(alliance_top_up_request_amount, 0)) AS earnings
+        FROM alliance_schema.alliance_top_up_request_table
+        WHERE alliance_top_up_request_date_updated BETWEEN ${new Date(startDate || new Date()).toISOString()}::timestamptz AND ${new Date(endDate || new Date()).toISOString()}::timestamptz
+        AND alliance_top_up_request_status = 'APPROVED'
+        GROUP BY DATE_TRUNC('day', alliance_top_up_request_date_updated AT TIME ZONE 'Asia/Manila')
+      ),
+      daily_withdraw AS (
+        SELECT DATE_TRUNC('day', alliance_withdrawal_request_date_updated AT TIME ZONE 'Asia/Manila'  ) AS date,
+               SUM(COALESCE(alliance_withdrawal_request_amount, 0) - COALESCE(alliance_withdrawal_request_fee, 0)) AS withdraw
+        FROM alliance_schema.alliance_withdrawal_request_table
+        WHERE alliance_withdrawal_request_date_updated BETWEEN ${new Date(startDate || new Date()).toISOString()}::timestamptz AND ${new Date(endDate || new Date()).toISOString()}::timestamptz
+        AND alliance_withdrawal_request_status = 'APPROVED'
+        GROUP BY DATE_TRUNC('day', alliance_withdrawal_request_date_updated AT TIME ZONE 'Asia/Manila')
+      )
+      SELECT COALESCE(e.date, w.date) AS date,
+             COALESCE(e.earnings, 0) AS dailyEarnings,
+             COALESCE(w.withdraw, 0) AS dailyWithdraw
+      FROM daily_earnings e
+      FULL OUTER JOIN daily_withdraw w ON e.date = w.date
+      ORDER BY date;
+    `;
+        return {
+            clientData,
+        };
+    });
 };
