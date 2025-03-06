@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { getPhilippinesTime } from "../../utils/function.js";
+import { redis } from "../../utils/redis.js";
 
 const prisma = new PrismaClient();
 
@@ -258,6 +259,13 @@ export const dashboardPostModel = async (params: {
 };
 
 export const dashboardGetModel = async () => {
+  const cacheKey = `dashboard-get`;
+
+  const cachedData = await redis.get(cacheKey);
+  if (cachedData) {
+    return cachedData;
+  }
+
   const [totalActivatedPackage, numberOfRegisteredUser, totalActivatedUser] =
     await prisma.$transaction([
       prisma.package_member_connection_table.count(),
@@ -269,9 +277,112 @@ export const dashboardGetModel = async () => {
       }),
     ]);
 
-  return {
+  const data = {
     numberOfRegisteredUser,
     totalActivatedPackage,
     totalActivatedUser,
   };
+
+  await redis.set(cacheKey, JSON.stringify(data), {
+    ex: 60 * 5, // 5 minutes
+  });
+
+  return data;
+};
+
+export const dashboardPostClientModel = async (params: {
+  dateFilter?: { start?: string; end?: string };
+}) => {
+  return await prisma.$transaction(async (tx) => {
+    const { dateFilter } = params;
+
+    const startDate = dateFilter?.start
+      ? new Date(
+          getPhilippinesTime(new Date(dateFilter.start), "start")
+        ).toISOString()
+      : getPhilippinesTime(
+          new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          "start"
+        );
+
+    const endDate = dateFilter?.end
+      ? getPhilippinesTime(new Date(dateFilter.end), "end")
+      : getPhilippinesTime(
+          new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
+          "end"
+        );
+
+    const [dailyWithdraw, monthlyWithdraw, dailyEarnings, monthlyEarnings] =
+      await Promise.all([
+        tx.alliance_withdrawal_request_table.aggregate({
+          _sum: {
+            alliance_withdrawal_request_amount: true,
+            alliance_withdrawal_request_fee: true,
+          },
+
+          where: {
+            alliance_withdrawal_request_status: "APPROVED",
+            alliance_withdrawal_request_date_updated: {
+              gte: getPhilippinesTime(new Date(new Date()), "start"),
+              lte: getPhilippinesTime(new Date(new Date()), "end"),
+            },
+          },
+        }),
+
+        tx.alliance_withdrawal_request_table.aggregate({
+          _sum: {
+            alliance_withdrawal_request_amount: true,
+            alliance_withdrawal_request_fee: true,
+          },
+
+          where: {
+            alliance_withdrawal_request_status: "APPROVED",
+            alliance_withdrawal_request_date_updated: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+        }),
+
+        tx.alliance_top_up_request_table.aggregate({
+          _sum: {
+            alliance_top_up_request_amount: true,
+          },
+          where: {
+            alliance_top_up_request_status: "APPROVED",
+            alliance_top_up_request_date_updated: {
+              gte: getPhilippinesTime(new Date(new Date()), "start"),
+              lte: getPhilippinesTime(new Date(new Date()), "end"),
+            },
+          },
+        }),
+
+        tx.alliance_top_up_request_table.aggregate({
+          _sum: {
+            alliance_top_up_request_amount: true,
+          },
+
+          where: {
+            alliance_top_up_request_status: "APPROVED",
+            alliance_top_up_request_date_updated: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+        }),
+      ]);
+
+    const response = {
+      dailyWithdraw:
+        (dailyWithdraw._sum.alliance_withdrawal_request_amount ?? 0) -
+        (dailyWithdraw._sum.alliance_withdrawal_request_fee ?? 0),
+      monthlyWithdraw:
+        (monthlyWithdraw._sum.alliance_withdrawal_request_amount ?? 0) -
+        (monthlyWithdraw._sum.alliance_withdrawal_request_fee ?? 0),
+      dailyEarnings: dailyEarnings._sum.alliance_top_up_request_amount ?? 0,
+      monthlyEarnings: monthlyEarnings._sum.alliance_top_up_request_amount ?? 0,
+    };
+
+    return response;
+  });
 };

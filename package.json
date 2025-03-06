@@ -1,5 +1,5 @@
 {
-  "name": "prime-server",
+  "name": "elevate-server",
   "type": "module",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
@@ -9,7 +9,6 @@
     "db": "bun prisma generate && bun prisma db push"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.7",
     "@hono/node-ws": "^1.0.7",
     "@prisma/client": "^6.2.1",
     "@supabase/ssr": "^0.5.2",

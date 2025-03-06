@@ -3,7 +3,8 @@ import { Redis } from "@upstash/redis";
 import { Redis as RedisSubscriber } from "ioredis";
 // Ensure environment variables are set correctly
 if (!process.env.UPSTASH_REDIS_REST_URL ||
-    !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    !process.env.UPSTASH_REDIS_REST_TOKEN ||
+    !process.env.REDIS_SUBSCRIBER_URL) {
     throw new Error("Upstash Redis credentials are missing.");
 }
 // Create a single Redis connection
@@ -11,7 +12,7 @@ export const redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
-export const redisSubscriber = new RedisSubscriber("rediss://default:AZNHAAIjcDFiYzhjMTJlOTU2MTU0ZWMxYjczNzkzOGM4YmMwY2U3MnAxMA@perfect-mosquito-37703.upstash.io:6379", {
+export const redisSubscriber = new RedisSubscriber(process.env.REDIS_SUBSCRIBER_URL, {
     keyPrefix: "package-purchased",
 });
 // Cache rate limiter instances to avoid recreating them per request
