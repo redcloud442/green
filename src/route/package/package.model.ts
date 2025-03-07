@@ -4,7 +4,7 @@ import {
   type user_table,
 } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
-import { redisSubscriber } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const packagePostModel = async (params: {
   amount: number;
@@ -13,6 +13,7 @@ export const packagePostModel = async (params: {
   user: user_table;
 }) => {
   const { amount, packageId, teamMemberProfile, user } = params;
+  console.log(teamMemberProfile);
 
   const [packageData, earningsData, referralData] = await Promise.all([
     prisma.package_table.findUnique({
@@ -42,6 +43,8 @@ export const packagePostModel = async (params: {
       select: { alliance_referral_hierarchy: true },
     }),
   ]);
+
+  console.log(earningsData);
 
   if (!packageData) {
     throw new Error("Package not found.");
@@ -250,7 +253,7 @@ export const packagePostModel = async (params: {
     )}: ${packageData.package_name} Package. Congratulations!`;
 
     try {
-      await redisSubscriber.publish("package-purchased", message);
+      await redis.publish("package-purchased", message);
     } catch (error) {
       console.error("Redis Error:", error);
     }
