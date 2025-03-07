@@ -4,7 +4,6 @@ import {
   type user_table,
 } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
-import { redis } from "../../utils/redis.js";
 
 export const packagePostModel = async (params: {
   amount: number;
@@ -243,21 +242,21 @@ export const packagePostModel = async (params: {
     });
   }
 
-  if (isFromWallet) {
-    const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
-      "en-US",
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }
-    )}: ${packageData.package_name} Package. Congratulations!`;
+  // if (isFromWallet) {
+  //   const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
+  //     "en-US",
+  //     {
+  //       minimumFractionDigits: 2,
+  //       maximumFractionDigits: 2,
+  //     }
+  //   )}: ${packageData.package_name} Package. Congratulations!`;
 
-    try {
-      await redis.publish("package-purchased", message);
-    } catch (error) {
-      console.error("Redis Error:", error);
-    }
-  }
+  //   try {
+  //     await redis.publish("package-purchased", message);
+  //   } catch (error) {
+  //     console.error("Redis Error:", error);
+  //   }
+  // }
 
   return connectionData;
 };
