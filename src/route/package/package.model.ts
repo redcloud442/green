@@ -1,10 +1,10 @@
-import { redis } from "@/utils/redis.js";
 import {
   Prisma,
   type alliance_member_table,
   type user_table,
 } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
+import { redis } from "../../utils/redis.js";
 
 export const packagePostModel = async (params: {
   amount: number;
