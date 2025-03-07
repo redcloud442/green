@@ -13,7 +13,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string(),
   MOVIDER_API_KEY: z.string(),
   MOVIDER_API_SECRET: z.string(),
-  REDIS_SUBSCRIBER_URL: z.string(),
+  REDIS_SUBSCRIBER_URL: z.string().optional(),
 });
 
 export const envConfig = envSchema.parse({
