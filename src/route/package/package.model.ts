@@ -256,7 +256,7 @@ export const packagePostModel = async (params: {
     }
   }
 
-  return true;
+  return connectionData;
 };
 
 export const packageGetModel = async () => {

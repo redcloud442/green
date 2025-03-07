@@ -57,32 +57,6 @@ app.get("/", (c) => {
     </body>
     </html>
   `);
-  return c.html(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>API Status</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-          }
-          .status {
-            font-size: 20px;
-            color: green;
-          }
-        </style>
-    </head>
-    <body>
-        <h1>API Status</h1>
-        <p class="status">✅ API is working perfectly!</p>
-        <p>Current Time: ${new Date().toLocaleString()}</p>
-    </body>
-    </html>
-  `);
 });
 
 app.onError(errorHandlerMiddleware);
@@ -90,7 +64,7 @@ app.use(logger());
 
 app.route("/api/v1", route);
 
-const clients = new Map<string, WebSocket>();
+const clients = new Map<string, Set<WebSocket>>();
 
 async function listenForRedisMessages() {
   try {
@@ -101,12 +75,22 @@ async function listenForRedisMessages() {
       if (channel === "package-purchased") {
         const clientIds = await redis.smembers("websocket-clients");
 
+        console.log("Clients to notify:", clientIds);
+
         for (const clientId of clientIds) {
-          const client = clients.get(clientId);
-          if (client?.readyState === WebSocket.OPEN) {
-            client.send(
-              JSON.stringify({ event: "package-purchased", data: message })
+          const userSockets = clients.get(clientId);
+
+          if (userSockets) {
+            console.log(
+              `Sending message to ${clientId}, ${userSockets.size} connections`
             );
+            for (const ws of userSockets) {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(
+                  JSON.stringify({ event: "package-purchased", data: message })
+                );
+              }
+            }
           }
         }
       }
@@ -124,17 +108,39 @@ app.get(
     return {
       async onOpen(evt: Event, ws: WebSocket & { id?: string }) {
         const { id } = c.get("user");
-        ws.id = id;
-        clients.set(id, ws);
+        if (!clients.has(id)) {
+          clients.set(id, new Set([ws]));
+        } else {
+          clients.get(id)!.add(ws); // Add the WebSocket to the user's connection set
+        }
+
         await redis.sadd("websocket-clients", id);
+
+        console.log(
+          `Client ${id} connected. Total connections: ${clients.get(id)?.size}`
+        );
       },
+
       onMessage(event, ws) {
         ws.send(event.data as string);
       },
+
       onClose(ws: WebSocket & { id?: string }) {
         if (ws.id) {
-          redis.srem("websocket-clients", ws.id);
-          clients.delete(ws.id);
+          const userId = ws.id;
+          const userSockets = clients.get(userId);
+
+          if (userSockets) {
+            userSockets.delete(ws);
+            console.log(
+              `Client ${userId} disconnected. Remaining connections: ${userSockets.size}`
+            );
+
+            if (userSockets.size === 0) {
+              redis.srem("websocket-clients", userId);
+              clients.delete(userId);
+            }
+          }
         }
       },
     };

@@ -175,7 +175,7 @@ export const packagePostModel = async (params) => {
             console.error("Redis Error:", error);
         }
     }
-    return true;
+    return connectionData;
 };
 export const packageGetModel = async () => {
     const result = await prisma.$transaction(async (tx) => {
