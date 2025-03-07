@@ -6,8 +6,7 @@ import { Redis as RedisSubscriber } from "ioredis";
 // Ensure environment variables are set correctly
 if (
   !process.env.UPSTASH_REDIS_REST_URL ||
-  !process.env.UPSTASH_REDIS_REST_TOKEN ||
-  !process.env.REDIS_SUBSCRIBER_URL
+  !process.env.UPSTASH_REDIS_REST_TOKEN
 ) {
   throw new Error("Upstash Redis credentials are missing.");
 }
