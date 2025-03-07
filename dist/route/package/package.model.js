@@ -1,8 +1,8 @@
-import { redis } from "@/utils/redis.js";
 import { Prisma, } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
 export const packagePostModel = async (params) => {
     const { amount, packageId, teamMemberProfile, user } = params;
+    console.log(teamMemberProfile);
     const [packageData, earningsData, referralData] = await Promise.all([
         prisma.package_table.findUnique({
             where: { package_id: packageId },
@@ -31,6 +31,7 @@ export const packagePostModel = async (params) => {
             select: { alliance_referral_hierarchy: true },
         }),
     ]);
+    console.log(earningsData);
     if (!packageData) {
         throw new Error("Package not found.");
     }
@@ -163,18 +164,20 @@ export const packagePostModel = async (params) => {
             },
         });
     }
-    if (isFromWallet) {
-        const message = `${user.user_username} invested ₱ ${amount.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        })}: ${packageData.package_name} Package. Congratulations!`;
-        try {
-            await redis.publish("package-purchased", message);
-        }
-        catch (error) {
-            console.error("Redis Error:", error);
-        }
-    }
+    // if (isFromWallet) {
+    //   const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
+    //     "en-US",
+    //     {
+    //       minimumFractionDigits: 2,
+    //       maximumFractionDigits: 2,
+    //     }
+    //   )}: ${packageData.package_name} Package. Congratulations!`;
+    //   try {
+    //     await redis.publish("package-purchased", message);
+    //   } catch (error) {
+    //     console.error("Redis Error:", error);
+    //   }
+    // }
     return connectionData;
 };
 export const packageGetModel = async () => {
