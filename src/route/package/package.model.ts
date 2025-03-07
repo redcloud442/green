@@ -4,7 +4,7 @@ import {
   type user_table,
 } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
-import { redis } from "../../utils/redis.js";
+import { redisSubscriber } from "../../utils/redis.js";
 
 export const packagePostModel = async (params: {
   amount: number;
@@ -250,7 +250,7 @@ export const packagePostModel = async (params: {
     )}: ${packageData.package_name} Package. Congratulations!`;
 
     try {
-      await redis.publish("package-purchased", message);
+      await redisSubscriber.publish("package-purchased", message);
     } catch (error) {
       console.error("Redis Error:", error);
     }
