@@ -19,7 +19,7 @@ export const redis = new Redis({
 });
 
 export const redisSubscriber = new RedisSubscriber(
-  process.env.REDIS_SUBSCRIBER_URL,
+  "rediss://default:AZNHAAIjcDFiYzhjMTJlOTU2MTU0ZWMxYjczNzkzOGM4YmMwY2U3MnAxMA@perfect-mosquito-37703.upstash.io:6379",
   {
     keyPrefix: "package-purchased",
   }
