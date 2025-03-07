@@ -2,7 +2,7 @@ import type { Context, Next } from "hono";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionMemberUser } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const missionMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
@@ -19,11 +19,10 @@ export const missionMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:mission-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -50,11 +49,10 @@ export const missionPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:mission-post`,
     10,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

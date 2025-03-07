@@ -12,7 +12,7 @@ import {
   protectionMemberUser,
   protectionMerchantAdmin,
 } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const merchantGetMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
@@ -29,11 +29,10 @@ export const merchantGetMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:merchant-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -58,11 +57,10 @@ export const merchantDeleteMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:merchant-delete`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -95,11 +93,10 @@ export const merchantPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:merchant-post`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -136,11 +133,10 @@ export const merchantPatchMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:merchant-patch`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -179,11 +175,10 @@ export const merchantBankMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:merchant-bank-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -221,11 +216,10 @@ export const merchantBalanceMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:merchant-balance-history`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

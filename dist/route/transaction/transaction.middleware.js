@@ -1,8 +1,8 @@
+import { redis } from "@/utils/redis.js";
 import { transactionSchemaPost } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionMemberUser } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
 export const transactionPostMiddleware = async (c, next) => {
     const user = c.get("user");
     const response = await protectionMemberUser(user.id, prisma);
@@ -13,7 +13,7 @@ export const transactionPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:transaction-post`, 100, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:transaction-post`, 100, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

@@ -6,16 +6,15 @@ import {
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionMemberUser } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const messagingPostMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:email-post`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -47,11 +46,10 @@ export const messagingBatchPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:email-post`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

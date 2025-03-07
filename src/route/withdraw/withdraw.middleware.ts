@@ -13,7 +13,7 @@ import {
   protectionAccountingAdmin,
   protectionMemberUser,
 } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const withdrawPostMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
@@ -30,11 +30,10 @@ export const withdrawPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-post`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -80,11 +79,10 @@ export const withdrawHistoryPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-history-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -128,11 +126,10 @@ export const updateWithdrawMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:update-withdraw`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -173,11 +170,10 @@ export const withdrawListPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-list-post`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -231,11 +227,10 @@ export const withdrawGetMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-list-post`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -265,11 +260,10 @@ export const withdrawHistoryReportPostMiddleware = async (
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-history-report-post`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -308,11 +302,10 @@ export const withdrawTotalReportPostMiddleware = async (
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-history-report-post`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

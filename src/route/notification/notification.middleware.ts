@@ -10,7 +10,7 @@ import {
   protectionAdmin,
   protectionMemberUser,
 } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const notificationPostMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
@@ -21,11 +21,10 @@ export const notificationPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:email-post`,
     10,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -57,11 +56,10 @@ export const notificationPutMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:notification-get`,
     10,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -92,11 +90,10 @@ export const notificationGetMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:notification-get`,
     10,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -132,11 +129,10 @@ export const notificationPutNotificationMiddleware = async (
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:notification-get`,
     10,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

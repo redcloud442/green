@@ -10,7 +10,7 @@ import {
   protectionAdmin,
   protectionMemberUser,
 } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const referralDirectMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
@@ -27,11 +27,10 @@ export const referralDirectMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile?.alliance_member_id}:direct-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -74,11 +73,10 @@ export const referralIndirectMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile?.alliance_member_id}:indirect-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -120,11 +118,10 @@ export const referralTotalGetMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile?.alliance_member_id}:total-get`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -151,11 +148,10 @@ export const referraluserPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile?.alliance_member_id}:user-get`,
     10,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

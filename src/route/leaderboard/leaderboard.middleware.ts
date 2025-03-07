@@ -3,7 +3,7 @@ import { leaderboardPostSchema } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionAdmin } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const leaderboardPostMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
@@ -20,11 +20,10 @@ export const leaderboardPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:leaderboard-post`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

@@ -5,6 +5,7 @@ import { envConfig } from "./env.js";
 import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
 import route from "./route/route.js";
+import { redis } from "./utils/redis.js";
 
 const app = new Hono();
 
@@ -24,6 +25,16 @@ app.use(
     exposeHeaders: ["Content-Range", "X-Total-Count"],
   })
 );
+
+(async () => {
+  const isAuthenticated = await redis.authenticate();
+  if (isAuthenticated) {
+    console.log("✅ Redis Authentication Successful!");
+  } else {
+    console.error("❌ Redis Authentication Failed!");
+    process.exit(1);
+  }
+})();
 
 app.get("/", (c) => {
   return c.html(`

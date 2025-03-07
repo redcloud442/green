@@ -3,16 +3,15 @@ import { emailBatchPostSchema, emailPostSchema } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionAdmin } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const emailPostMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:email-post`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -65,11 +64,10 @@ export const emailBatchPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${user.id}:email-post`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

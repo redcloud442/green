@@ -2,14 +2,14 @@ import { notificationBatchPostSchema, notificationBatchPutSchema, socketGetNotif
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionAdmin, protectionMemberUser, } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 export const notificationPostMiddleware = async (c, next) => {
     const user = c.get("user");
     const teamMemberProfile = await protectionAdmin(user.id, prisma);
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:email-post`, 10, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${user.id}:email-post`, 10, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -31,7 +31,7 @@ export const notificationPutMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:notification-get`, 10, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${user.id}:notification-get`, 10, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -52,7 +52,7 @@ export const notificationGetMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:notification-get`, 10, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${user.id}:notification-get`, 10, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }
@@ -75,7 +75,7 @@ export const notificationPutNotificationMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${user.id}:notification-get`, 10, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${user.id}:notification-get`, 10, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

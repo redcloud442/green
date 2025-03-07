@@ -2,7 +2,7 @@ import { directReferralsSchemaPost, indirectReferralsSchemaPost, referralPostSch
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionAdmin, protectionMemberUser, } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 export const referralDirectMiddleware = async (c, next) => {
     const user = c.get("user");
     const response = await protectionMemberUser(user.id, prisma);
@@ -13,7 +13,7 @@ export const referralDirectMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile?.alliance_member_id}:direct-get`, 50, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${teamMemberProfile?.alliance_member_id}:direct-get`, 50, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too many requests. Please try again later.", 429);
     }
@@ -42,7 +42,7 @@ export const referralIndirectMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile?.alliance_member_id}:indirect-get`, 50, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${teamMemberProfile?.alliance_member_id}:indirect-get`, 50, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too many requests. Please try again later.", 429);
     }
@@ -71,7 +71,7 @@ export const referralTotalGetMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile?.alliance_member_id}:total-get`, 100, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${teamMemberProfile?.alliance_member_id}:total-get`, 100, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too many requests. Please try again later.", 429);
     }
@@ -88,7 +88,7 @@ export const referraluserPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile?.alliance_member_id}:user-get`, 10, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${teamMemberProfile?.alliance_member_id}:user-get`, 10, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too many requests. Please try again later.", 429);
     }

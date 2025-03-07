@@ -11,7 +11,7 @@ import {
   protectionAdmin,
   protectionMemberUser,
 } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const packagePostMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
@@ -28,11 +28,10 @@ export const packagePostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:package-post`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -67,11 +66,10 @@ export const packagePostListMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -98,11 +96,10 @@ export const packageGetMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:package-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -129,11 +126,10 @@ export const packageCreatePostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -180,11 +176,10 @@ export const packageUpdatePutMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:package-update`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -238,11 +233,10 @@ export const packagesClaimPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:package-claim`,
     10,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -281,11 +275,10 @@ export const packagesGetListMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:package-list`,
     100,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

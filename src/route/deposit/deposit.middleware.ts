@@ -13,7 +13,7 @@ import {
   protectionMemberUser,
   protectionMerchantAdmin,
 } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 
 export const depositMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
@@ -30,11 +30,10 @@ export const depositMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:deposit-post`,
     10,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -84,11 +83,10 @@ export const depositPutMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -130,11 +128,10 @@ export const depositHistoryPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:deposit-history-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -187,11 +184,10 @@ export const depositListPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
+  const isAllowed = await redis.rateLimit(
     `rate-limit:${teamMemberProfile.alliance_member_id}:deposit-list-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {
@@ -247,11 +243,10 @@ export const depositReportPostMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Unauthorized", 401);
   }
 
-  const isAllowed = await rateLimit(
-    `rate-limit:${teamMemberProfile.alliance_member_id}:deposit-list-get`,
+  const isAllowed = await redis.rateLimit(
+    `rate-limit:${teamMemberProfile.alliance_member_id}:deposit-report-get`,
     50,
-    "1m",
-    c
+    60
   );
 
   if (!isAllowed) {

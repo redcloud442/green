@@ -2,7 +2,7 @@ import { userOptionsPostSchema } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionMerchantAdmin } from "../../utils/protection.js";
-import { rateLimit } from "../../utils/redis.js";
+import { redis } from "../../utils/redis.js";
 export const userOptionsPostMiddleware = async (c, next) => {
     const user = c.get("user");
     const response = await protectionMerchantAdmin(user.id, prisma);
@@ -13,7 +13,7 @@ export const userOptionsPostMiddleware = async (c, next) => {
     if (!teamMemberProfile) {
         return sendErrorResponse("Unauthorized", 401);
     }
-    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-options-post`, 100, "1m", c);
+    const isAllowed = await redis.rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:user-options-post`, 100, 60);
     if (!isAllowed) {
         return sendErrorResponse("Too Many Requests", 429);
     }

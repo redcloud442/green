@@ -877,9 +877,11 @@ export const userTreeModel = async (params: { memberId: string }) => {
     })
     .filter(Boolean);
 
-  await redis.set(cacheKey, JSON.stringify(formattedUserTreeData), {
-    ex: 60 * 60 * 24 * 30,
-  });
+  await redis.set(
+    cacheKey,
+    JSON.stringify(formattedUserTreeData),
+    60 * 60 * 24 * 30
+  );
 
   return formattedUserTreeData;
 };
