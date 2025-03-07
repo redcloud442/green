@@ -31,7 +31,7 @@ if [ -f /run/secrets/serviceRoleKey  ]; then
 fi
 
 if [ -f /run/secrets/redisSubscriberUrl  ]; then
-  export REDIS_SUBSCRIBER_URL=$(cat /run/secrets/serviceRoleKey )
+  export REDIS_SUBSCRIBER_URL=$(cat /run/secrets/redisSubscriberUrl )
 fi
 
 
