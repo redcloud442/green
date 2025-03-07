@@ -11,8 +11,6 @@ export const dashboardPostModel = async (params) => {
         const endDate = dateFilter.end
             ? getPhilippinesTime(new Date(dateFilter.end), "end")
             : getPhilippinesTime(new Date(), "end");
-        console.log(startDate);
-        console.log(endDate);
         const [totalEarnings, packageEarnings, totalActivatedUserByDate, totalApprovedWithdrawal, totalApprovedReceipts, totalWithdraw, bountyEarnings, activePackageWithinTheDay, chartDataRaw, data,] = await Promise.all([
             tx.alliance_top_up_request_table.aggregate({
                 _sum: { alliance_top_up_request_amount: true },
@@ -176,7 +174,9 @@ export const dashboardGetModel = async () => {
         totalActivatedPackage,
         totalActivatedUser,
     };
-    await redis.set(cacheKey, JSON.stringify(data));
+    await redis.set(cacheKey, JSON.stringify(data), {
+        ex: 60 * 5, // 5 minutes
+    });
     return data;
 };
 export const dashboardPostClientModel = async (params) => {
@@ -188,32 +188,66 @@ export const dashboardPostClientModel = async (params) => {
         const endDate = dateFilter?.end
             ? getPhilippinesTime(new Date(dateFilter.end), "end")
             : getPhilippinesTime(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), "end");
-        const clientData = await tx.$queryRaw `
-      WITH daily_earnings AS (
-        SELECT DATE_TRUNC('day', alliance_top_up_request_date_updated AT TIME ZONE 'Asia/Manila') AS date,
-               SUM(COALESCE(alliance_top_up_request_amount, 0)) AS earnings
-        FROM alliance_schema.alliance_top_up_request_table
-        WHERE alliance_top_up_request_date_updated BETWEEN ${new Date(startDate || new Date()).toISOString()}::timestamptz AND ${new Date(endDate || new Date()).toISOString()}::timestamptz
-        AND alliance_top_up_request_status = 'APPROVED'
-        GROUP BY DATE_TRUNC('day', alliance_top_up_request_date_updated AT TIME ZONE 'Asia/Manila')
-      ),
-      daily_withdraw AS (
-        SELECT DATE_TRUNC('day', alliance_withdrawal_request_date_updated AT TIME ZONE 'Asia/Manila'  ) AS date,
-               SUM(COALESCE(alliance_withdrawal_request_amount, 0) - COALESCE(alliance_withdrawal_request_fee, 0)) AS withdraw
-        FROM alliance_schema.alliance_withdrawal_request_table
-        WHERE alliance_withdrawal_request_date_updated BETWEEN ${new Date(startDate || new Date()).toISOString()}::timestamptz AND ${new Date(endDate || new Date()).toISOString()}::timestamptz
-        AND alliance_withdrawal_request_status = 'APPROVED'
-        GROUP BY DATE_TRUNC('day', alliance_withdrawal_request_date_updated AT TIME ZONE 'Asia/Manila')
-      )
-      SELECT COALESCE(e.date, w.date) AS date,
-             COALESCE(e.earnings, 0) AS dailyEarnings,
-             COALESCE(w.withdraw, 0) AS dailyWithdraw
-      FROM daily_earnings e
-      FULL OUTER JOIN daily_withdraw w ON e.date = w.date
-      ORDER BY date;
-    `;
-        return {
-            clientData,
+        const [dailyWithdraw, monthlyWithdraw, dailyEarnings, monthlyEarnings] = await Promise.all([
+            tx.alliance_withdrawal_request_table.aggregate({
+                _sum: {
+                    alliance_withdrawal_request_amount: true,
+                    alliance_withdrawal_request_fee: true,
+                },
+                where: {
+                    alliance_withdrawal_request_status: "APPROVED",
+                    alliance_withdrawal_request_date_updated: {
+                        gte: getPhilippinesTime(new Date(new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(new Date()), "end"),
+                    },
+                },
+            }),
+            tx.alliance_withdrawal_request_table.aggregate({
+                _sum: {
+                    alliance_withdrawal_request_amount: true,
+                    alliance_withdrawal_request_fee: true,
+                },
+                where: {
+                    alliance_withdrawal_request_status: "APPROVED",
+                    alliance_withdrawal_request_date_updated: {
+                        gte: startDate,
+                        lte: endDate,
+                    },
+                },
+            }),
+            tx.alliance_top_up_request_table.aggregate({
+                _sum: {
+                    alliance_top_up_request_amount: true,
+                },
+                where: {
+                    alliance_top_up_request_status: "APPROVED",
+                    alliance_top_up_request_date_updated: {
+                        gte: getPhilippinesTime(new Date(new Date()), "start"),
+                        lte: getPhilippinesTime(new Date(new Date()), "end"),
+                    },
+                },
+            }),
+            tx.alliance_top_up_request_table.aggregate({
+                _sum: {
+                    alliance_top_up_request_amount: true,
+                },
+                where: {
+                    alliance_top_up_request_status: "APPROVED",
+                    alliance_top_up_request_date_updated: {
+                        gte: startDate,
+                        lte: endDate,
+                    },
+                },
+            }),
+        ]);
+        const response = {
+            dailyWithdraw: (dailyWithdraw._sum.alliance_withdrawal_request_amount ?? 0) -
+                (dailyWithdraw._sum.alliance_withdrawal_request_fee ?? 0),
+            monthlyWithdraw: (monthlyWithdraw._sum.alliance_withdrawal_request_amount ?? 0) -
+                (monthlyWithdraw._sum.alliance_withdrawal_request_fee ?? 0),
+            dailyEarnings: dailyEarnings._sum.alliance_top_up_request_amount ?? 0,
+            monthlyEarnings: monthlyEarnings._sum.alliance_top_up_request_amount ?? 0,
         };
+        return response;
     });
 };
