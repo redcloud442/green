@@ -11,7 +11,13 @@ export class RedisAPI {
   async authenticate(): Promise<boolean> {
     try {
       const response = await fetch(
-        `${this.baseURL}/api/v1/auth/${this.password}`
+        `${this.baseURL}/api/v1/auth/${this.password}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
       );
       const data: { AUTH?: [boolean, string] } = await response.json();
       return data.AUTH?.[1] === "OK";
@@ -24,14 +30,26 @@ export class RedisAPI {
   async set<T>(key: string, value: T, ttl?: number): Promise<boolean> {
     try {
       const setResponse = await fetch(
-        `${this.baseURL}/SET/${key}/${encodeURIComponent(
+        `${this.baseURL}/api/v1/set/${key}/${encodeURIComponent(
           JSON.stringify(value)
-        )}`
+        )}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
       );
       const setData: { SET?: string } = await setResponse.json();
 
       if (ttl) {
-        await fetch(`${this.baseURL}/api/v1/expire/${key}/${ttl}`);
+        await fetch(`${this.baseURL}/api/v1/expire/${key}/${ttl}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.password}`,
+          },
+        });
       }
 
       return setData.SET === "OK";
@@ -43,7 +61,13 @@ export class RedisAPI {
   // Get a value by key
   async get<T>(key: string): Promise<T | null> {
     try {
-      const response = await fetch(`${this.baseURL}/api/v1/get/${key}`);
+      const response = await fetch(`${this.baseURL}/api/v1/get/${key}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.password}`,
+        },
+      });
       const data: { GET?: string } = await response.json();
       return data.GET ? (JSON.parse(data.GET) as T) : null;
     } catch (error) {
@@ -54,7 +78,13 @@ export class RedisAPI {
   // Delete a key
   async del(key: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/api/v1/del/${key}`);
+      const response = await fetch(`${this.baseURL}/api/v1/del/${key}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.password}`,
+        },
+      });
       const data: { DEL?: number } = await response.json();
       return data.DEL === 1;
     } catch (error) {
@@ -68,12 +98,24 @@ export class RedisAPI {
     ttl?: number
   ): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/api/v1/incr/${key}`);
+      const response = await fetch(`${this.baseURL}/api/v1/incr/${key}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.password}`,
+        },
+      });
       const data: { INCR?: number } = await response.json();
       const currentCount = data.INCR || 0;
 
       if (ttl && currentCount === 1) {
-        await fetch(`${this.baseURL}/api/v1/expire/${key}/${ttl}`);
+        await fetch(`${this.baseURL}/api/v1/expire/${key}/${ttl}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.password}`,
+          },
+        });
       }
 
       const allowed = currentCount <= maxRequests;
@@ -87,7 +129,14 @@ export class RedisAPI {
   async sadd(key: string, value: string): Promise<boolean> {
     try {
       const response = await fetch(
-        `${this.baseURL}/api/v1/sadd/${key}/${value}`
+        `${this.baseURL}/api/v1/sadd/${key}/${value}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.password}`,
+          },
+        }
       );
       const data: { SADD?: number } = await response.json();
       return data.SADD === 1;
@@ -99,7 +148,14 @@ export class RedisAPI {
   async srem(key: string, value: string): Promise<boolean> {
     try {
       const response = await fetch(
-        `${this.baseURL}/api/v1/srem/${key}/${value}`
+        `${this.baseURL}/api/v1/srem/${key}/${value}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.password}`,
+          },
+        }
       );
       const data: { SREM?: number } = await response.json();
       return data.SREM === 1;
