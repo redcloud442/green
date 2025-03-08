@@ -141,29 +141,31 @@ export const packagePostModel = async (params) => {
                     });
                 }));
             }
+            if (bountyLogs.length > 0) {
+                await tx.package_ally_bounty_log.createMany({ data: bountyLogs });
+            }
+            if (transactionLogs.length > 0) {
+                await tx.alliance_transaction_table.createMany({
+                    data: transactionLogs,
+                });
+            }
+            if (notificationLogs.length > 0) {
+                await tx.alliance_notification_table.createMany({
+                    data: notificationLogs,
+                });
+            }
+            if (!teamMemberProfile?.alliance_member_is_active) {
+                await tx.alliance_member_table.update({
+                    where: { alliance_member_id: teamMemberProfile.alliance_member_id },
+                    data: {
+                        alliance_member_is_active: true,
+                        alliance_member_date_updated: new Date(),
+                    },
+                });
+            }
         }
         return connectionData;
     });
-    if (connectionData) {
-        await Promise.all([
-            prisma.package_ally_bounty_log.createMany({ data: bountyLogs }),
-            prisma.alliance_transaction_table.createMany({
-                data: transactionLogs,
-            }),
-            prisma.alliance_notification_table.createMany({
-                data: notificationLogs,
-            }),
-        ]);
-    }
-    if (!teamMemberProfile?.alliance_member_is_active) {
-        await prisma.alliance_member_table.update({
-            where: { alliance_member_id: teamMemberProfile.alliance_member_id },
-            data: {
-                alliance_member_is_active: true,
-                alliance_member_date_updated: new Date(),
-            },
-        });
-    }
     // if (isFromWallet) {
     //   const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
     //     "en-US",
