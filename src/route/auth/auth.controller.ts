@@ -1,5 +1,4 @@
 import { supabaseClient } from "@/utils/supabase.js";
-import { Prisma } from "@prisma/client";
 import type { Context } from "hono";
 import { getClientIP } from "../../utils/function.js";
 import {
@@ -63,9 +62,7 @@ export const registerUserController = async (c: Context) => {
 
     return c.json({ message: "User created" }, 200);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      await supabaseClient.auth.admin.deleteUser(params.userId);
-    }
+    await supabaseClient.auth.admin.deleteUser(params.userId);
     return c.json({ message: "Error occurred" }, 500);
   }
 };
