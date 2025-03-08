@@ -22,7 +22,7 @@ export const packagePostMiddleware = async (c: Context, next: Next) => {
     return response;
   }
 
-  const { teamMemberProfile } = response;
+  const { teamMemberProfile, user: userData } = response;
 
   if (!teamMemberProfile) {
     return sendErrorResponse("Unauthorized", 401);
@@ -47,7 +47,7 @@ export const packagePostMiddleware = async (c: Context, next: Next) => {
   }
 
   c.set("teamMemberProfile", teamMemberProfile);
-
+  c.set("user", userData);
   await next();
 };
 

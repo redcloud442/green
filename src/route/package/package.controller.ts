@@ -14,16 +14,20 @@ export const packagePostController = async (c: Context) => {
   try {
     const { amount, packageId } = await c.req.json();
 
+    const user = c.get("user");
+
     const teamMemberProfile = c.get("teamMemberProfile");
 
-    await packagePostModel({
+    const data = await packagePostModel({
       amount,
       packageId,
       teamMemberProfile: teamMemberProfile,
+      user: user,
     });
 
-    return c.json({ message: "Package Availed" });
+    return c.json(data, 200);
   } catch (error) {
+    console.log(error);
     return sendErrorResponse("Internal Server Error", 500);
   }
 };

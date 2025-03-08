@@ -1,12 +1,18 @@
-import { Prisma, type alliance_member_table } from "@prisma/client";
+import {
+  Prisma,
+  type alliance_member_table,
+  type user_table,
+} from "@prisma/client";
 import prisma from "../../utils/prisma.js";
 
 export const packagePostModel = async (params: {
   amount: number;
   packageId: string;
   teamMemberProfile: alliance_member_table;
+  user: user_table;
 }) => {
-  const { amount, packageId, teamMemberProfile } = params;
+  const { amount, packageId, teamMemberProfile, user } = params;
+  console.log(teamMemberProfile);
 
   const [packageData, earningsData, referralData] = await Promise.all([
     prisma.package_table.findUnique({
@@ -36,6 +42,8 @@ export const packagePostModel = async (params: {
       select: { alliance_referral_hierarchy: true },
     }),
   ]);
+
+  console.log(earningsData);
 
   if (!packageData) {
     throw new Error("Package not found.");
@@ -69,6 +77,7 @@ export const packagePostModel = async (params: {
     referralWallet,
     updatedCombinedWallet,
     isReinvestment,
+    isFromWallet,
   } = deductFromWallets(
     requestedAmount,
     combinedEarnings,
@@ -93,10 +102,10 @@ export const packagePostModel = async (params: {
   );
 
   let bountyLogs: Prisma.package_ally_bounty_logCreateManyInput[] = [];
-
   let transactionLogs: Prisma.alliance_transaction_tableCreateManyInput[] = [];
   let notificationLogs: Prisma.alliance_notification_tableCreateManyInput[] =
     [];
+
   const connectionData = await prisma.$transaction(async (tx) => {
     const connectionData = await tx.package_member_connection_table.create({
       data: {
@@ -206,34 +215,54 @@ export const packagePostModel = async (params: {
           })
         );
       }
+
+      if (bountyLogs.length > 0) {
+        await tx.package_ally_bounty_log.createMany({ data: bountyLogs });
+      }
+
+      if (transactionLogs.length > 0) {
+        await tx.alliance_transaction_table.createMany({
+          data: transactionLogs,
+        });
+      }
+
+      if (notificationLogs.length > 0) {
+        await tx.alliance_notification_table.createMany({
+          data: notificationLogs,
+        });
+      }
+
+      if (!teamMemberProfile?.alliance_member_is_active) {
+        await tx.alliance_member_table.update({
+          where: { alliance_member_id: teamMemberProfile.alliance_member_id },
+          data: {
+            alliance_member_is_active: true,
+            alliance_member_date_updated: new Date(),
+          },
+        });
+      }
     }
 
     return connectionData;
   });
 
-  if (connectionData) {
-    await Promise.all([
-      prisma.package_ally_bounty_log.createMany({ data: bountyLogs }),
-      prisma.alliance_transaction_table.createMany({
-        data: transactionLogs,
-      }),
-      prisma.alliance_notification_table.createMany({
-        data: notificationLogs,
-      }),
-    ]);
-  }
+  // if (isFromWallet) {
+  //   const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
+  //     "en-US",
+  //     {
+  //       minimumFractionDigits: 2,
+  //       maximumFractionDigits: 2,
+  //     }
+  //   )}: ${packageData.package_name} Package. Congratulations!`;
 
-  if (!teamMemberProfile?.alliance_member_is_active) {
-    await prisma.alliance_member_table.update({
-      where: { alliance_member_id: teamMemberProfile.alliance_member_id },
-      data: {
-        alliance_member_is_active: true,
-        alliance_member_date_updated: new Date(),
-      },
-    });
-  }
+  //   try {
+  //     await redis.publish("package-purchased", message);
+  //   } catch (error) {
+  //     console.error("Redis Error:", error);
+  //   }
+  // }
 
-  return true;
+  return connectionData;
 };
 
 export const packageGetModel = async () => {
@@ -605,6 +634,7 @@ function deductFromWallets(
 ) {
   let remaining = amount;
   let isReinvestment = false;
+  let isFromWallet = false;
   // Validate total funds
   if (combinedWallet < amount) {
     throw new Error("Insufficient balance in combined wallet.");
@@ -614,7 +644,9 @@ function deductFromWallets(
   if (olympusWallet >= remaining) {
     olympusWallet -= remaining;
     remaining = 0;
+    isFromWallet = true;
   } else {
+    isFromWallet = false;
     remaining -= olympusWallet;
     olympusWallet = 0;
   }
@@ -651,6 +683,7 @@ function deductFromWallets(
   // Return updated balances and remaining combined wallet
   return {
     olympusWallet,
+    isFromWallet,
     olympusEarnings,
     referralWallet,
     isReinvestment,

@@ -1,7 +1,8 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
 export const packagePostModel = async (params) => {
-    const { amount, packageId, teamMemberProfile } = params;
+    const { amount, packageId, teamMemberProfile, user } = params;
+    console.log(teamMemberProfile);
     const [packageData, earningsData, referralData] = await Promise.all([
         prisma.package_table.findUnique({
             where: { package_id: packageId },
@@ -30,6 +31,7 @@ export const packagePostModel = async (params) => {
             select: { alliance_referral_hierarchy: true },
         }),
     ]);
+    console.log(earningsData);
     if (!packageData) {
         throw new Error("Package not found.");
     }
@@ -45,7 +47,7 @@ export const packagePostModel = async (params) => {
     if (combinedEarnings < requestedAmount) {
         throw new Error("Insufficient balance in the wallet.");
     }
-    const { olympusWallet, olympusEarnings, referralWallet, updatedCombinedWallet, isReinvestment, } = deductFromWallets(requestedAmount, combinedEarnings, Number(alliance_olympus_wallet), Number(alliance_olympus_earnings), Number(alliance_referral_bounty));
+    const { olympusWallet, olympusEarnings, referralWallet, updatedCombinedWallet, isReinvestment, isFromWallet, } = deductFromWallets(requestedAmount, combinedEarnings, Number(alliance_olympus_wallet), Number(alliance_olympus_earnings), Number(alliance_referral_bounty));
     const packagePercentage = new Prisma.Decimal(Number(packageData.package_percentage)).div(100);
     const packageAmountEarnings = new Prisma.Decimal(requestedAmount).mul(packagePercentage);
     // Generate referral chain with a capped depth
@@ -139,30 +141,46 @@ export const packagePostModel = async (params) => {
                     });
                 }));
             }
+            if (bountyLogs.length > 0) {
+                await tx.package_ally_bounty_log.createMany({ data: bountyLogs });
+            }
+            if (transactionLogs.length > 0) {
+                await tx.alliance_transaction_table.createMany({
+                    data: transactionLogs,
+                });
+            }
+            if (notificationLogs.length > 0) {
+                await tx.alliance_notification_table.createMany({
+                    data: notificationLogs,
+                });
+            }
+            if (!teamMemberProfile?.alliance_member_is_active) {
+                await tx.alliance_member_table.update({
+                    where: { alliance_member_id: teamMemberProfile.alliance_member_id },
+                    data: {
+                        alliance_member_is_active: true,
+                        alliance_member_date_updated: new Date(),
+                    },
+                });
+            }
         }
         return connectionData;
     });
-    if (connectionData) {
-        await Promise.all([
-            prisma.package_ally_bounty_log.createMany({ data: bountyLogs }),
-            prisma.alliance_transaction_table.createMany({
-                data: transactionLogs,
-            }),
-            prisma.alliance_notification_table.createMany({
-                data: notificationLogs,
-            }),
-        ]);
-    }
-    if (!teamMemberProfile?.alliance_member_is_active) {
-        await prisma.alliance_member_table.update({
-            where: { alliance_member_id: teamMemberProfile.alliance_member_id },
-            data: {
-                alliance_member_is_active: true,
-                alliance_member_date_updated: new Date(),
-            },
-        });
-    }
-    return true;
+    // if (isFromWallet) {
+    //   const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
+    //     "en-US",
+    //     {
+    //       minimumFractionDigits: 2,
+    //       maximumFractionDigits: 2,
+    //     }
+    //   )}: ${packageData.package_name} Package. Congratulations!`;
+    //   try {
+    //     await redis.publish("package-purchased", message);
+    //   } catch (error) {
+    //     console.error("Redis Error:", error);
+    //   }
+    // }
+    return connectionData;
 };
 export const packageGetModel = async () => {
     const result = await prisma.$transaction(async (tx) => {
@@ -417,6 +435,7 @@ function getBonusPercentage(level) {
 function deductFromWallets(amount, combinedWallet, olympusWallet, olympusEarnings, referralWallet) {
     let remaining = amount;
     let isReinvestment = false;
+    let isFromWallet = false;
     // Validate total funds
     if (combinedWallet < amount) {
         throw new Error("Insufficient balance in combined wallet.");
@@ -425,8 +444,10 @@ function deductFromWallets(amount, combinedWallet, olympusWallet, olympusEarning
     if (olympusWallet >= remaining) {
         olympusWallet -= remaining;
         remaining = 0;
+        isFromWallet = true;
     }
     else {
+        isFromWallet = false;
         remaining -= olympusWallet;
         olympusWallet = 0;
     }
@@ -461,6 +482,7 @@ function deductFromWallets(amount, combinedWallet, olympusWallet, olympusEarning
     // Return updated balances and remaining combined wallet
     return {
         olympusWallet,
+        isFromWallet,
         olympusEarnings,
         referralWallet,
         isReinvestment,

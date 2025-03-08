@@ -10,7 +10,9 @@ export class RedisAPI {
   // Authenticate Redis
   async authenticate(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/AUTH/${this.password}`);
+      const response = await fetch(
+        `${this.baseURL}/api/v1/auth/${this.password}`
+      );
       const data: { AUTH?: [boolean, string] } = await response.json();
       return data.AUTH?.[1] === "OK";
     } catch (error) {
@@ -29,7 +31,7 @@ export class RedisAPI {
       const setData: { SET?: string } = await setResponse.json();
 
       if (ttl) {
-        await fetch(`${this.baseURL}/EXPIRE/${key}/${ttl}`);
+        await fetch(`${this.baseURL}/api/v1/expire/${key}/${ttl}`);
       }
 
       return setData.SET === "OK";
@@ -41,7 +43,7 @@ export class RedisAPI {
   // Get a value by key
   async get<T>(key: string): Promise<T | null> {
     try {
-      const response = await fetch(`${this.baseURL}/GET/${key}`);
+      const response = await fetch(`${this.baseURL}/api/v1/get/${key}`);
       const data: { GET?: string } = await response.json();
       return data.GET ? (JSON.parse(data.GET) as T) : null;
     } catch (error) {
@@ -52,7 +54,7 @@ export class RedisAPI {
   // Delete a key
   async del(key: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/DEL/${key}`);
+      const response = await fetch(`${this.baseURL}/api/v1/del/${key}`);
       const data: { DEL?: number } = await response.json();
       return data.DEL === 1;
     } catch (error) {
@@ -66,17 +68,41 @@ export class RedisAPI {
     ttl?: number
   ): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/INCR/${key}`);
+      const response = await fetch(`${this.baseURL}/api/v1/incr/${key}`);
       const data: { INCR?: number } = await response.json();
       const currentCount = data.INCR || 0;
 
       if (ttl && currentCount === 1) {
-        await fetch(`${this.baseURL}/EXPIRE/${key}/${ttl}`);
+        await fetch(`${this.baseURL}/api/v1/expire/${key}/${ttl}`);
       }
 
       const allowed = currentCount <= maxRequests;
 
       return allowed;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async sadd(key: string, value: string): Promise<boolean> {
+    try {
+      const response = await fetch(
+        `${this.baseURL}/api/v1/sadd/${key}/${value}`
+      );
+      const data: { SADD?: number } = await response.json();
+      return data.SADD === 1;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async srem(key: string, value: string): Promise<boolean> {
+    try {
+      const response = await fetch(
+        `${this.baseURL}/api/v1/srem/${key}/${value}`
+      );
+      const data: { SREM?: number } = await response.json();
+      return data.SREM === 1;
     } catch (error) {
       return false;
     }

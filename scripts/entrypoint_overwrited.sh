@@ -30,6 +30,11 @@ if [ -f /run/secrets/serviceRoleKey  ]; then
   export SUPABASE_SERVICE_ROLE_KEY=$(cat /run/secrets/serviceRoleKey )
 fi
 
+if [ -f /run/secrets/redisSubscriberUrl  ]; then
+  export REDIS_SUBSCRIBER_URL=$(cat /run/secrets/redisSubscriberUrl )
+fi
+
+
 
 # Start the application
 exec "$@"

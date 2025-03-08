@@ -1,3 +1,5 @@
+import { supabaseClient } from "@/utils/supabase.js";
+import { Prisma } from "@prisma/client";
 import { getClientIP } from "../../utils/function.js";
 import { adminModel, loginGetModel, loginModel, registerUserModel, } from "./auth.model.js";
 export const loginController = async (c) => {
@@ -38,13 +40,16 @@ export const adminController = async (c) => {
     }
 };
 export const registerUserController = async (c) => {
+    const params = c.get("params");
     try {
-        const params = c.get("params");
         const ip = getClientIP(c.req.raw);
         await registerUserModel({ ...params, ip });
         return c.json({ message: "User created" }, 200);
     }
     catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            await supabaseClient.auth.admin.deleteUser(params.userId);
+        }
         return c.json({ message: "Error occurred" }, 500);
     }
 };

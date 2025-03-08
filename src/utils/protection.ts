@@ -61,6 +61,7 @@ export const protectionMemberUser = async (
 
     return {
       teamMemberProfile: teamMember as alliance_member_table,
+      user: profile,
     };
   } catch (e) {
     return sendErrorResponse("Internal Server Error", 500);
