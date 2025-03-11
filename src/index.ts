@@ -7,7 +7,7 @@ import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
 import { protectionMiddleware } from "./middleware/protection.middleware.js";
 import route from "./route/route.js";
-import { redis } from "./utils/redis.js";
+import { redisPublisher, redisSubscriber } from "./utils/redis.js";
 
 const app = new Hono();
 
@@ -15,11 +15,10 @@ app.use(
   "*",
   supabaseMiddleware(),
   cors({
-    origin: [
+    origin:
       process.env.NODE_ENV === "development"
-        ? "http://localhost:3000, http://192.168.1.56:3000"
-        : "https://elevateglobal.app",
-    ],
+        ? ["http://localhost:3000"]
+        : ["https://elevateglobal.app"],
 
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -39,15 +38,8 @@ app.get("/", (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>API Status</title>
         <style>
-          body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-          }
-          .status {
-            font-size: 20px;
-            color: green;
-          }
+          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+          .status { font-size: 20px; color: green; }
         </style>
     </head>
     <body>
@@ -61,44 +53,41 @@ app.get("/", (c) => {
 
 app.onError(errorHandlerMiddleware);
 app.use(logger());
-
 app.route("/api/v1", route);
 
+/**
+ * WebSocket connections map (per replica)
+ * Stores active WebSocket clients in memory.
+ */
 const clients = new Map<string, Set<WebSocket>>();
 
-// async function listenForRedisMessages() {
-//   try {
-//     await redisSubscriber.subscribe("package-purchased");
-//     console.log("✅ Redis subscribed to package-purchased");
+/**
+ * 🔥 Listen for Redis messages and broadcast them to all WebSocket clients
+ * ✅ Ensures messages from `package-purchased` are sent to WebSockets across all replicas
+ */
+async function listenForRedisMessages() {
+  try {
+    await redisSubscriber.subscribe("package-purchased");
+    console.log("✅ Subscribed to Redis channel: package-purchased");
 
-//     redisSubscriber.on("message", async (channel, message) => {
-//       if (channel === "package-purchased") {
-//         const clientIds = await redis.smembers("websocket-clients");
-
-//         console.log("Clients to notify:", clientIds);
-
-//         for (const clientId of clientIds) {
-//           const userSockets = clients.get(clientId);
-
-//           if (userSockets) {
-//             console.log(
-//               `Sending message to ${clientId}, ${userSockets.size} connections`
-//             );
-//             for (const ws of userSockets) {
-//               if (ws.readyState === WebSocket.OPEN) {
-//                 ws.send(
-//                   JSON.stringify({ event: "package-purchased", data: message })
-//                 );
-//               }
-//             }
-//           }
-//         }
-//       }
-//     });
-//   } catch (err) {
-//     console.error("❌ Error subscribing to Redis:", err);
-//   }
-// }
+    redisSubscriber.on("message", async (channel, message) => {
+      if (channel === "package-purchased") {
+        // Forward the message to all connected WebSockets in this replica
+        for (const sockets of clients.values()) {
+          for (const ws of sockets) {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(
+                JSON.stringify({ event: "package-purchased", data: message })
+              );
+            }
+          }
+        }
+      }
+    });
+  } catch (err) {
+    console.error("❌ Error subscribing to Redis:", err);
+  }
+}
 
 app.get(
   "/ws",
@@ -108,36 +97,30 @@ app.get(
     return {
       async onOpen(evt: Event, ws: WebSocket & { id?: string }) {
         const { id } = c.get("user");
+        ws.id = id;
+
+        // Store WebSocket in local clients map (per replica)
         if (!clients.has(id)) {
-          clients.set(id, new Set([ws]));
-        } else {
-          clients.get(id)!.add(ws); // Add the WebSocket to the user's connection set
+          clients.set(id, new Set());
         }
-
-        await redis.sadd("websocket-clients", id);
-
-        console.log(
-          `Client ${id} connected. Total connections: ${clients.get(id)?.size}`
-        );
+        clients.get(id)?.add(ws);
       },
 
       onMessage(event, ws) {
-        ws.send(event.data as string);
+        console.log(`📨 Received WebSocket message: ${event.data}`);
+
+        // ✅ Publish message to Redis so all replicas receive it
+        redisPublisher.publish("package-purchased", event.data as string);
       },
 
-      onClose(ws: WebSocket & { id?: string }) {
+      async onClose(ws: WebSocket & { id?: string }) {
         if (ws.id) {
           const userId = ws.id;
           const userSockets = clients.get(userId);
 
           if (userSockets) {
             userSockets.delete(ws);
-            console.log(
-              `Client ${userId} disconnected. Remaining connections: ${userSockets.size}`
-            );
-
             if (userSockets.size === 0) {
-              redis.srem("websocket-clients", userId);
               clients.delete(userId);
             }
           }
@@ -147,7 +130,8 @@ app.get(
   })
 );
 
-// listenForRedisMessages();
+// ✅ Start Redis listener so all replicas receive messages
+listenForRedisMessages();
 
 export default {
   port: envConfig.PORT || 9000,

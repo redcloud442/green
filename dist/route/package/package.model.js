@@ -1,5 +1,6 @@
 import { Prisma, } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
+import { redisPublisher } from "../../utils/redis.js";
 export const packagePostModel = async (params) => {
     const { amount, packageId, teamMemberProfile, user } = params;
     console.log(teamMemberProfile);
@@ -31,7 +32,6 @@ export const packagePostModel = async (params) => {
             select: { alliance_referral_hierarchy: true },
         }),
     ]);
-    console.log(earningsData);
     if (!packageData) {
         throw new Error("Package not found.");
     }
@@ -47,7 +47,7 @@ export const packagePostModel = async (params) => {
     if (combinedEarnings < requestedAmount) {
         throw new Error("Insufficient balance in the wallet.");
     }
-    const { olympusWallet, olympusEarnings, referralWallet, updatedCombinedWallet, isReinvestment, isFromWallet, } = deductFromWallets(requestedAmount, combinedEarnings, Number(alliance_olympus_wallet), Number(alliance_olympus_earnings), Number(alliance_referral_bounty));
+    const { olympusWallet, olympusEarnings, referralWallet, updatedCombinedWallet, isReinvestment, isFromWallet, } = deductFromWallets(requestedAmount, combinedEarnings, Number(alliance_olympus_wallet.toFixed(2)), Number(alliance_olympus_earnings.toFixed(2)), Number(alliance_referral_bounty.toFixed(2)));
     const packagePercentage = new Prisma.Decimal(Number(packageData.package_percentage)).div(100);
     const packageAmountEarnings = new Prisma.Decimal(requestedAmount).mul(packagePercentage);
     // Generate referral chain with a capped depth
@@ -166,20 +166,18 @@ export const packagePostModel = async (params) => {
         }
         return connectionData;
     });
-    // if (isFromWallet) {
-    //   const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
-    //     "en-US",
-    //     {
-    //       minimumFractionDigits: 2,
-    //       maximumFractionDigits: 2,
-    //     }
-    //   )}: ${packageData.package_name} Package. Congratulations!`;
-    //   try {
-    //     await redis.publish("package-purchased", message);
-    //   } catch (error) {
-    //     console.error("Redis Error:", error);
-    //   }
-    // }
+    if (isFromWallet) {
+        const message = `${user.user_username} invested ₱ ${amount.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })}: ${packageData.package_name} Package. Congratulations!`;
+        try {
+            await redisPublisher.publish("package-purchased", message);
+        }
+        catch (error) {
+            console.error("Redis Error:", error);
+        }
+    }
     return connectionData;
 };
 export const packageGetModel = async () => {
