@@ -78,7 +78,6 @@ export const userPostMiddleware = async (c: Context, next: Next) => {
     60
   );
 
-  console.log(isAllowed);
   if (!isAllowed) {
     return sendErrorResponse("Too Many Requests", 429);
   }

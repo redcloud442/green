@@ -17,7 +17,7 @@ app.use(
   cors({
     origin: [
       process.env.NODE_ENV === "development"
-        ? "http://localhost:3000, http://192.168.1.56:3000"
+        ? "http://localhost:3000"
         : "https://elevateglobal.app",
     ],
 
@@ -36,7 +36,6 @@ const { upgradeWebSocket, websocket } = createBunWebSocket();
     console.log("✅ Redis Authentication Successful!");
   } else {
     console.error("❌ Redis Authentication Failed!");
-    process.exit(1);
   }
 })();
 
@@ -75,40 +74,6 @@ app.use(logger());
 app.route("/api/v1", route);
 
 const clients = new Map<string, Set<WebSocket>>();
-
-// async function listenForRedisMessages() {
-//   try {
-//     await redisSubscriber.subscribe("package-purchased");
-//     console.log("✅ Redis subscribed to package-purchased");
-
-//     redisSubscriber.on("message", async (channel, message) => {
-//       if (channel === "package-purchased") {
-//         const clientIds = await redis.smembers("websocket-clients");
-
-//         console.log("Clients to notify:", clientIds);
-
-//         for (const clientId of clientIds) {
-//           const userSockets = clients.get(clientId);
-
-//           if (userSockets) {
-//             console.log(
-//               `Sending message to ${clientId}, ${userSockets.size} connections`
-//             );
-//             for (const ws of userSockets) {
-//               if (ws.readyState === WebSocket.OPEN) {
-//                 ws.send(
-//                   JSON.stringify({ event: "package-purchased", data: message })
-//                 );
-//               }
-//             }
-//           }
-//         }
-//       }
-//     });
-//   } catch (err) {
-//     console.error("❌ Error subscribing to Redis:", err);
-//   }
-// }
 
 app.get(
   "/ws",
