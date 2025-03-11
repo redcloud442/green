@@ -7,6 +7,7 @@ import { supabaseMiddleware } from "./middleware/auth.middleware.js";
 import { errorHandlerMiddleware } from "./middleware/errorMiddleware.js";
 import { protectionMiddleware } from "./middleware/protection.middleware.js";
 import route from "./route/route.js";
+import { cleanUpStaleClients } from "./utils/function.js";
 import { redisPublisher, redisSubscriber } from "./utils/redis.js";
 const app = new Hono();
 app.use("*", supabaseMiddleware(), cors({
@@ -18,7 +19,6 @@ app.use("*", supabaseMiddleware(), cors({
     allowHeaders: ["Content-Type", "Authorization"],
     exposeHeaders: ["Content-Range", "X-Total-Count"],
 }));
-const { upgradeWebSocket, websocket } = createBunWebSocket();
 app.get("/", (c) => {
     return c.html(`
     <!DOCTYPE html>
@@ -43,28 +43,19 @@ app.get("/", (c) => {
 app.onError(errorHandlerMiddleware);
 app.use(logger());
 app.route("/api/v1", route);
-/**
- * WebSocket connections map (per replica)
- * Stores active WebSocket clients in memory.
- */
-const clients = new Map();
-/**
- * 🔥 Listen for Redis messages and broadcast them to all WebSocket clients
- * ✅ Ensures messages from `package-purchased` are sent to WebSockets across all replicas
- */
+const { upgradeWebSocket, websocket } = createBunWebSocket();
 async function listenForRedisMessages() {
     try {
         await redisSubscriber.subscribe("package-purchased");
         console.log("✅ Subscribed to Redis channel: package-purchased");
         redisSubscriber.on("message", async (channel, message) => {
             if (channel === "package-purchased") {
-                // Forward the message to all connected WebSockets in this replica
-                for (const sockets of clients.values()) {
-                    for (const ws of sockets) {
-                        if (ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({ event: "package-purchased", data: message }));
-                        }
-                    }
+                console.log(`📢 Redis Broadcast: ${message}`);
+                // ✅ Get all WebSocket clients from Redis
+                const clientIds = await redisPublisher.smembers("websocket-clients");
+                // ✅ Notify all registered WebSockets
+                for (const clientId of clientIds) {
+                    await redisPublisher.publish(`ws:${clientId}`, message);
                 }
             }
         });
@@ -80,33 +71,48 @@ upgradeWebSocket((c) => {
         async onOpen(evt, ws) {
             const { id } = c.get("user");
             ws.id = id;
-            // Store WebSocket in local clients map (per replica)
-            if (!clients.has(id)) {
-                clients.set(id, new Set());
-            }
-            clients.get(id)?.add(ws);
-        },
-        onMessage(event, ws) {
-            console.log(`📨 Received WebSocket message: ${event.data}`);
-            // ✅ Publish message to Redis so all replicas receive it
-            redisPublisher.publish("package-purchased", event.data);
-        },
-        async onClose(ws) {
-            if (ws.id) {
-                const userId = ws.id;
-                const userSockets = clients.get(userId);
-                if (userSockets) {
-                    userSockets.delete(ws);
-                    if (userSockets.size === 0) {
-                        clients.delete(userId);
-                    }
+            console.log(`✅ WebSocket connected: ${id}`);
+            // ✅ Register client in Redis
+            await redisPublisher.sadd("websocket-clients", id);
+            // ✅ Subscribe WebSocket to its Redis channel
+            const userSubscriber = redisSubscriber.duplicate(); // Separate Redis connection
+            await userSubscriber.subscribe(`ws:${id}`);
+            userSubscriber.on("message", (channel, message) => {
+                if (channel === `ws:${id}` && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ event: "package-purchased", data: message }));
                 }
-            }
+            });
+            let messageQueue = [];
+            let isProcessing = false;
+            ws.onmessage = async (event) => {
+                messageQueue.push(event.data);
+                if (!isProcessing) {
+                    isProcessing = true;
+                    setTimeout(async () => {
+                        const messages = messageQueue;
+                        messageQueue = [];
+                        await redisPublisher
+                            .pipeline()
+                            .publish("package-purchased", JSON.stringify(messages))
+                            .exec();
+                        isProcessing = false;
+                    }, 100);
+                }
+            };
+            ws.onclose = async () => {
+                console.log(`❌ WebSocket disconnected: ${id}`);
+                // ✅ Remove from Redis
+                await redisPublisher.srem("websocket-clients", id);
+                await userSubscriber.unsubscribe(`ws:${id}`);
+                userSubscriber.quit();
+            };
         },
     };
 }));
-// ✅ Start Redis listener so all replicas receive messages
+// ✅ Start Redis listener for incoming messages
 listenForRedisMessages();
+// ✅ Run cleanup every 5 minutes
+setInterval(cleanUpStaleClients, 300000);
 export default {
     port: envConfig.PORT || 9000,
     fetch: app.fetch,
