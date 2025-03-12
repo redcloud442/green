@@ -1,4 +1,3 @@
-import { redisPublisher } from "./redis.js";
 import { supabaseClient } from "./supabase.js";
 export const sendErrorResponse = (message, status) => Response.json({ message: message }, { status });
 export const sendSuccessResponse = (message, status) => Response.json({ message: message }, { status });
@@ -46,14 +45,4 @@ export const getPhilippinesTime = (date, time) => {
     }
     const resultDate = new Date(adjustedDate.getTime() - philippinesOffset);
     return resultDate.toISOString();
-};
-export const cleanUpStaleClients = async () => {
-    const clientIds = await redisPublisher.smembers("websocket-clients");
-    for (const clientId of clientIds) {
-        const isActive = await redisPublisher.exists(`ws:${clientId}`);
-        if (!isActive) {
-            await redisPublisher.srem("websocket-clients", clientId);
-            console.log(`🧹 Cleaned up stale WebSocket client: ${clientId}`);
-        }
-    }
 };

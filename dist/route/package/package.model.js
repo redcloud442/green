@@ -1,9 +1,7 @@
 import { Prisma, } from "@prisma/client";
 import prisma from "../../utils/prisma.js";
-import { redisPublisher } from "../../utils/redis.js";
 export const packagePostModel = async (params) => {
     const { amount, packageId, teamMemberProfile, user } = params;
-    console.log(teamMemberProfile);
     const [packageData, earningsData, referralData] = await Promise.all([
         prisma.package_table.findUnique({
             where: { package_id: packageId },
@@ -172,10 +170,14 @@ export const packagePostModel = async (params) => {
             maximumFractionDigits: 2,
         })}: ${packageData.package_name} Package. Congratulations!`;
         try {
-            await redisPublisher.publish("package-purchased", message);
+            await prisma.package_notification_table.create({
+                data: {
+                    package_notification_message: message,
+                },
+            });
         }
         catch (error) {
-            console.error("Redis Error:", error);
+            console.error("Notification Error:", error);
         }
     }
     return connectionData;
