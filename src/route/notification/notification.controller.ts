@@ -2,9 +2,11 @@ import type { Context } from "hono";
 import { sendErrorResponse } from "../../utils/function.js";
 import {
   notificationGetModel,
+  notificationGetPackageModel,
   notificationPostModel,
   notificationPutModel,
   saveNotificationModel,
+  turnOffNotificationModel,
   updateNotificationModel,
 } from "./notification.model.js";
 
@@ -112,6 +114,37 @@ export const notificationPostPackageController = async (c: Context) => {
     );
   } catch (error) {
     console.error("Error saving notification:", error);
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const notificationControlController = async (c: Context) => {
+  try {
+    const { message } = c.get("params");
+
+    if (message === "START") {
+      await turnOffNotificationModel({ message: "START" });
+    } else if (message === "STOP") {
+      await turnOffNotificationModel({ message: "STOP" });
+    }
+
+    return c.json({
+      message: "Notification control updated successfully",
+    });
+  } catch (error) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const notificationGetPackageController = async (c: Context) => {
+  try {
+    const notifications = await notificationGetPackageModel();
+
+    return c.json({
+      message: "Notification control fetched successfully",
+      data: notifications,
+    });
+  } catch (error) {
     return sendErrorResponse("Internal Server Error", 500);
   }
 };

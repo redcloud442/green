@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 import prisma from "../../utils/prisma.js";
-import { redis } from "../../utils/redis.js";
+import { redis, redisOff } from "../../utils/redis.js";
 export const notificationGetModel = async (params) => {
     try {
         const result = await prisma.$transaction(async (tx) => {
@@ -170,6 +170,17 @@ export const notificationPutModel = async (params) => {
         });
     });
 };
+export const turnOffNotificationModel = async (params) => {
+    const { message } = params;
+    await redisOff.publish("notification_control", message);
+    return {
+        message: "Notification control updated successfully",
+    };
+};
+export const notificationGetPackageModel = async () => {
+    const notificationControl = await redis.get("notification_control");
+    return notificationControl;
+};
 export const saveNotificationModel = async (params) => {
     const { startAmount, endAmount } = params;
     if (typeof startAmount !== "number" || typeof endAmount !== "number") {
@@ -184,11 +195,10 @@ export const saveNotificationModel = async (params) => {
 export const notificationPostPackageModel = async (params) => {
     const { amount, packageData } = params;
     const notifications = generateNotifications();
-    const random = Math.floor(Math.random() * 2);
     const message = `${notifications} invested ₱ ${amount[0].toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-    })}: ${packageData[random].package_name} Package. Congratulations!`;
+    })}: ${packageData.package_name} Package. Congratulations!`;
     await prisma.package_notification_table.create({
         data: {
             package_notification_message: message,

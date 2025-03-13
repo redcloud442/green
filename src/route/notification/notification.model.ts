@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 import prisma from "../../utils/prisma.js";
-import { redis } from "../../utils/redis.js";
+import { redis, redisOff } from "../../utils/redis.js";
 
 export const notificationGetModel = async (params: {
   take: number;
@@ -220,6 +220,22 @@ export const notificationPutModel = async (params: {
   });
 };
 
+export const turnOffNotificationModel = async (params: { message: string }) => {
+  const { message } = params;
+
+  await redisOff.publish("notification_control", message);
+
+  return {
+    message: "Notification control updated successfully",
+  };
+};
+
+export const notificationGetPackageModel = async () => {
+  const notificationControl = await redis.get("notification_control");
+
+  return notificationControl;
+};
+
 export const saveNotificationModel = async (params: {
   startAmount: number;
   endAmount: number;
@@ -247,8 +263,6 @@ export const notificationPostPackageModel = async (params: {
   const { amount, packageData } = params;
 
   const notifications = generateNotifications();
-
-  const random = Math.floor(Math.random() * 2);
 
   const message = `${notifications} invested ₱ ${amount[0].toLocaleString(
     "en-US",

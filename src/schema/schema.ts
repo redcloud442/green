@@ -431,6 +431,10 @@ export const socketPostPackageSchema = z.object({
   endAmount: z.number().min(1),
 });
 
+export const socketPostControlSchema = z.object({
+  message: z.enum(["START", "STOP"]),
+});
+
 //email schema
 
 export const emailPostSchema = z.object({
