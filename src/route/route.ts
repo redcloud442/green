@@ -209,7 +209,7 @@ redisOn.subscribe("notification_control", (err) => {
   console.log("Subscribed to notification_control channel.");
 });
 
-redisOn.on("message", (channel, message) => {
+redisOn.on("message", async (channel, message) => {
   if (channel === "notification_control") {
     if (message === "STOP") {
       isRunning = false;
@@ -224,6 +224,7 @@ redisOn.on("message", (channel, message) => {
         startJob();
       }
     }
+    await redis.set("notification_control", message);
   }
 });
 
