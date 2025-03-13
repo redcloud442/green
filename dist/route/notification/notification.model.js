@@ -1,4 +1,6 @@
+import { faker } from "@faker-js/faker";
 import prisma from "../../utils/prisma.js";
+import { redis } from "../../utils/redis.js";
 export const notificationGetModel = async (params) => {
     try {
         const result = await prisma.$transaction(async (tx) => {
@@ -167,4 +169,35 @@ export const notificationPutModel = async (params) => {
             },
         });
     });
+};
+export const saveNotificationModel = async (params) => {
+    const { startAmount, endAmount } = params;
+    if (typeof startAmount !== "number" || typeof endAmount !== "number") {
+        throw new Error("Invalid startAmount or endAmount. They must be numbers.");
+    }
+    await redis.set("startAmount", startAmount.toString());
+    await redis.set("endAmount", endAmount.toString());
+    return {
+        message: "Notification saved successfully",
+    };
+};
+export const notificationPostPackageModel = async (params) => {
+    const { amount, packageData } = params;
+    const notifications = generateNotifications();
+    const random = Math.floor(Math.random() * 2);
+    const message = `${notifications} invested ₱ ${amount[0].toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })}: ${packageData[random].package_name} Package. Congratulations!`;
+    await prisma.package_notification_table.create({
+        data: {
+            package_notification_message: message,
+        },
+    });
+};
+const generateNotifications = () => {
+    return faker.internet
+        .username()
+        .replace(/[^a-zA-Z0-9]/g, "") // Remove special characters
+        .slice(0, 8); // Limit to 8 characters
 };

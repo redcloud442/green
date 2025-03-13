@@ -2,11 +2,13 @@ import { Hono } from "hono";
 import {
   notificationGetController,
   notificationPostController,
+  notificationPostPackageController,
   notificatioPutController,
 } from "./notification.controller.js";
 import {
   notificationGetMiddleware,
   notificationPostMiddleware,
+  notificationPostPackageMiddleware,
   notificationPutMiddleware,
   notificationPutNotificationMiddleware,
 } from "./notification.middleware.js";
@@ -19,6 +21,12 @@ notification.put(
   "/",
   notificationPutNotificationMiddleware,
   notificatioPutController
+);
+
+notification.post(
+  "/package",
+  notificationPostPackageMiddleware,
+  notificationPostPackageController
 );
 
 notification.post(

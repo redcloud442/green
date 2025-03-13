@@ -9,6 +9,7 @@
     "db": "bun prisma generate && bun prisma db push"
   },
   "dependencies": {
+    "@faker-js/faker": "^9.6.0",
     "@hono/node-ws": "^1.0.7",
     "@prisma/client": "^6.2.1",
     "@supabase/ssr": "^0.5.2",

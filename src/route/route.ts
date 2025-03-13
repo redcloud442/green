@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { protectionMiddleware } from "../middleware/protection.middleware.js";
+import { redis } from "../utils/redis.js";
 import auth from "./auth/auth.route.js";
 import dashboard from "./dashboard/dashboard.route.js";
 import deposit from "./deposit/deposit.route.js";
@@ -9,6 +10,7 @@ import leaderboard from "./leaderboard/leaderboard.route.js";
 import merchant from "./merchant/merchant.route.js";
 import messaging from "./messaging/messaging.route.js";
 import mission from "./mission/mission.route.js";
+import { notificationPostPackageModel } from "./notification/notification.model.js";
 import notification from "./notification/notification.route.js";
 import options from "./options/options.route.js";
 import packages from "./package/package.route.js";
@@ -109,5 +111,67 @@ app.get("/", (c) => {
           </html>
         `);
 });
+
+export const generateRandomAmounts = async (): Promise<number[]> => {
+  try {
+    const [startAmount, endAmount] = await Promise.all([
+      redis.get("startAmount") as Promise<string>,
+      redis.get("endAmount") as Promise<string>,
+    ]);
+
+    const min = startAmount ? parseInt(startAmount) : 300;
+    const max = endAmount ? parseInt(endAmount) : 1000;
+
+    if (isNaN(min) || isNaN(max) || min >= max) {
+      console.error("Invalid amount range in Redis");
+      return [];
+    }
+
+    return [Math.floor(Math.random() * (max - min + 1)) + min];
+  } catch (error) {
+    return [];
+  }
+};
+
+setInterval(async () => {
+  const LOCK_KEY = "notification_lock";
+  const LOCK_EXPIRY = 30;
+
+  try {
+    const lockAcquired = await redis.set(LOCK_KEY, "locked", {
+      nx: true,
+      ex: LOCK_EXPIRY,
+    });
+
+    if (lockAcquired !== "OK") {
+      console.log("Another server is handling the job. Skipping...");
+      return;
+    }
+
+    // Generate amounts
+    const randomAmounts = await generateRandomAmounts();
+    if (randomAmounts.length > 0) {
+      const packageData = [
+        { package_name: "PEAK" },
+        { package_name: "STARTER" },
+      ];
+      await notificationPostPackageModel({
+        amount: randomAmounts,
+        packageData,
+      });
+      console.log("Notification inserted successfully!");
+    } else {
+      console.log("Skipping insert: No valid random amounts generated.");
+    }
+  } catch (error) {
+    console.error("Error processing notification:", error);
+  } finally {
+    // Ensure lock is released after execution
+    const currentLockValue = await redis.get(LOCK_KEY);
+    if (currentLockValue === "locked") {
+      await redis.del(LOCK_KEY);
+    }
+  }
+}, 30000); // Keep the interval at 30 seconds
 
 export default app;

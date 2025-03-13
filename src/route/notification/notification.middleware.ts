@@ -3,6 +3,7 @@ import {
   notificationBatchPostSchema,
   notificationBatchPutSchema,
   socketGetNotificationSchema,
+  socketPostPackageSchema,
 } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
@@ -156,5 +157,45 @@ export const notificationPutNotificationMiddleware = async (
 
   c.set("params", validatedData.data);
   c.set("teamMemberProfile", teamMemberProfile);
+  return await next();
+};
+
+export const notificationPostPackageMiddleware = async (
+  c: Context,
+  next: Next
+) => {
+  const user = c.get("user");
+
+  const teamMemberProfile = await protectionAdmin(user.id, prisma);
+
+  if (!teamMemberProfile) {
+    return sendErrorResponse("Unauthorized", 401);
+  }
+
+  const isAllowed = await rateLimit(
+    `rate-limit:${user.id}:notification-post-package`,
+    10,
+    "1m",
+    c
+  );
+
+  if (!isAllowed) {
+    return sendErrorResponse("Too Many Requests", 429);
+  }
+
+  const { startAmount, endAmount } = await c.req.json();
+
+  const validatedData = socketPostPackageSchema.safeParse({
+    startAmount,
+    endAmount,
+  });
+
+  if (!validatedData.success) {
+    return sendErrorResponse("Invalid Request", 400);
+  }
+
+  c.set("params", validatedData.data);
+  c.set("teamMemberProfile", teamMemberProfile);
+
   return await next();
 };

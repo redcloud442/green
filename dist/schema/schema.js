@@ -346,6 +346,10 @@ export const socketGetNotificationSchema = z.object({
     skip: z.number().optional(),
     teamMemberId: z.string().uuid(),
 });
+export const socketPostPackageSchema = z.object({
+    startAmount: z.number().min(1),
+    endAmount: z.number().min(1),
+});
 //email schema
 export const emailPostSchema = z.object({
     to: z.string().email(),

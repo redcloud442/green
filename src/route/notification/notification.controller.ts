@@ -4,6 +4,7 @@ import {
   notificationGetModel,
   notificationPostModel,
   notificationPutModel,
+  saveNotificationModel,
   updateNotificationModel,
 } from "./notification.model.js";
 
@@ -90,6 +91,27 @@ export const notificationPutNotificationController = async (c: Context) => {
       data: notifications,
     });
   } catch (error) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const notificationPostPackageController = async (c: Context) => {
+  try {
+    const { startAmount, endAmount } = c.get("params");
+
+    await saveNotificationModel({
+      startAmount,
+      endAmount,
+    });
+
+    return c.json(
+      {
+        message: "Notification saved successfully",
+      },
+      200
+    );
+  } catch (error) {
+    console.error("Error saving notification:", error);
     return sendErrorResponse("Internal Server Error", 500);
   }
 };
