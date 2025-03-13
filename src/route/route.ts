@@ -136,13 +136,12 @@ export const generateRandomAmounts = async (): Promise<number[]> => {
 setInterval(async () => {
   const LOCK_KEY = "notification_lock";
   const LOCK_EXPIRY = 60;
-
+  const uniqueLockValue = crypto.randomUUID();
   try {
-    const lockAcquired = await redis.set(LOCK_KEY, "locked", {
+    const lockAcquired = await redis.set(LOCK_KEY, uniqueLockValue, {
       nx: true,
       ex: LOCK_EXPIRY,
     });
-
     if (lockAcquired !== "OK") {
       console.log("Another server is handling the job. Skipping...");
       return;
@@ -163,10 +162,10 @@ setInterval(async () => {
   } catch (error) {
     console.error("Error processing notification:", error);
   } finally {
-    // Ensure lock is released after execution
     const currentLockValue = await redis.get(LOCK_KEY);
-    if (currentLockValue === "locked") {
+    if (currentLockValue === uniqueLockValue) {
       await redis.del(LOCK_KEY);
+      console.log("Lock released by this server.");
     }
   }
 }, 60000);
