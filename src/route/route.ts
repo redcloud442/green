@@ -151,10 +151,7 @@ setInterval(async () => {
     // Generate amounts
     const randomAmounts = await generateRandomAmounts();
     if (randomAmounts.length > 0) {
-      const packageData = [
-        { package_name: "PEAK" },
-        { package_name: "STARTER" },
-      ];
+      const packageData = { package_name: "PEAK" };
       await notificationPostPackageModel({
         amount: randomAmounts,
         packageData,

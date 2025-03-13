@@ -242,7 +242,7 @@ export const notificationPostPackageModel = async (params: {
   amount: number[];
   packageData: {
     package_name: string;
-  }[];
+  };
 }) => {
   const { amount, packageData } = params;
 
@@ -256,7 +256,7 @@ export const notificationPostPackageModel = async (params: {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }
-  )}: ${packageData[random].package_name} Package. Congratulations!`;
+  )}: ${packageData.package_name} Package. Congratulations!`;
 
   await prisma.package_notification_table.create({
     data: {
