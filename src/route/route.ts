@@ -127,8 +127,20 @@ export const generateRandomAmounts = async (): Promise<number[]> => {
       return [];
     }
 
-    return [Math.floor(Math.random() * (max - min + 1)) + min];
+    const highMin = 5000;
+    const highMax = 20000;
+
+    const useHighRange = Math.random() < 0.8;
+
+    const chosenMin = useHighRange ? highMin : min;
+    const chosenMax = useHighRange ? highMax : max;
+
+    const randomAmount =
+      Math.floor(Math.random() * (chosenMax - chosenMin + 1)) + chosenMin;
+
+    return [randomAmount];
   } catch (error) {
+    console.error("Error generating random amount:", error);
     return [];
   }
 };
