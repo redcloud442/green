@@ -135,7 +135,7 @@ export const generateRandomAmounts = async (): Promise<number[]> => {
 
 setInterval(async () => {
   const LOCK_KEY = "notification_lock";
-  const LOCK_EXPIRY = 30;
+  const LOCK_EXPIRY = 60;
 
   try {
     const lockAcquired = await redis.set(LOCK_KEY, "locked", {
@@ -169,6 +169,6 @@ setInterval(async () => {
       await redis.del(LOCK_KEY);
     }
   }
-}, 30000); // Keep the interval at 30 seconds
+}, 60000);
 
 export default app;
