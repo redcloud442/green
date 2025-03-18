@@ -136,7 +136,7 @@ export const generateRandomAmounts = async (): Promise<number[]> => {
   }
 };
 
-let isRunning = true;
+let isRunning = false;
 let intervalId: NodeJS.Timeout | null = null;
 
 const LOCK_KEY = "notification_lock";
