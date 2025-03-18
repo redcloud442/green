@@ -283,6 +283,10 @@ export const updateWithdrawModel = async (params: {
       throw new Error("Request not found.");
     }
 
+    if (existingRequest.alliance_withdrawal_request_status !== "PENDING") {
+      throw new Error("Request is not pending.");
+    }
+
     if (
       teamMemberProfile.alliance_member_id !==
         existingRequest.alliance_withdrawal_request_approved_by &&
