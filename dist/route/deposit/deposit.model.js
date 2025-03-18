@@ -79,6 +79,9 @@ export const depositPutModel = async (params) => {
         if (!existingRequest) {
             throw new Error("Request not found.");
         }
+        if (existingRequest.alliance_top_up_request_status !== "PENDING") {
+            throw new Error("Request is not pending.");
+        }
         const updatedRequest = await tx.alliance_top_up_request_table.update({
             where: { alliance_top_up_request_id: requestId },
             data: {

@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { getPhilippinesTime } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { redis } from "../../utils/redis.js";
 export const referralDirectModelPost = async (params) => {
@@ -57,8 +58,8 @@ export const referralDirectModelPost = async (params) => {
     return returnData;
 };
 export const referralIndirectModelPost = async (params) => {
-    const { page, limit, search, columnAccessor, isAscendingSort, teamMemberProfile, } = params;
-    const cacheKey = `referral-indirect-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}`;
+    const { page, limit, search, columnAccessor, isAscendingSort, teamMemberProfile, dateFilter, } = params;
+    const cacheKey = `referral-indirect-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}-${dateFilter?.start}-${dateFilter?.end}`;
     const cachedData = await redis.get(cacheKey);
     if (cachedData) {
         return cachedData;
@@ -102,9 +103,20 @@ export const referralIndirectModelPost = async (params) => {
     if (finalIndirectReferralIds.length === 0) {
         return { success: false, message: "No referral data found" };
     }
+    const startDate = dateFilter?.start
+        ? getPhilippinesTime(new Date(dateFilter?.start), "start")
+        : null;
+    const endDate = dateFilter?.end
+        ? getPhilippinesTime(new Date(dateFilter?.end), "end")
+        : null;
     const offset = Math.max((page - 1) * limit, 0);
     const searchCondition = search
         ? Prisma.raw(`AND (ut.user_first_name ILIKE ${`%${search}%`} OR ut.user_last_name ILIKE ${`%${search}%`} OR ut.user_username ILIKE ${`%${search}%`})`)
+        : Prisma.empty;
+    const dateFilterCondition = dateFilter?.start && dateFilter?.end
+        ? Prisma.sql `AND pa.package_ally_bounty_log_date_created 
+        BETWEEN ${Prisma.raw(`'${startDate}'::timestamptz`)} 
+        AND ${Prisma.raw(`'${endDate}'::timestamptz`)}`
         : Prisma.empty;
     const indirectReferralDetails = await prisma.$queryRaw `
   SELECT 
@@ -121,13 +133,13 @@ export const referralIndirectModelPost = async (params) => {
   WHERE pa.package_ally_bounty_from = ANY(${finalIndirectReferralIds}::uuid[])
     AND pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
     ${searchCondition}
+    ${dateFilterCondition}
   GROUP BY 
     ut.user_first_name, 
     ut.user_last_name, 
     ut.user_username, 
     pa.package_ally_bounty_log_date_created
   ORDER BY pa.package_ally_bounty_log_date_created DESC
-
   LIMIT ${limit} OFFSET ${offset}
 `;
     const totalCountResult = await prisma.$queryRaw `
@@ -143,6 +155,7 @@ export const referralIndirectModelPost = async (params) => {
     WHERE pa.package_ally_bounty_from = ANY(${finalIndirectReferralIds}::uuid[])
       AND pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid
       ${searchCondition}
+      ${dateFilterCondition}
     GROUP BY 
       pa.package_ally_bounty_from,
 

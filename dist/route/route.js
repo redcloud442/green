@@ -105,12 +105,7 @@ export const generateRandomAmounts = async () => {
             console.error("Invalid amount range in Redis");
             return [];
         }
-        const highMin = 5000;
-        const highMax = 20000;
-        const useHighRange = Math.random() < 0.8;
-        const chosenMin = useHighRange ? highMin : min;
-        const chosenMax = useHighRange ? highMax : max;
-        const randomAmount = Math.floor(Math.random() * (chosenMax - chosenMin + 1)) + chosenMin;
+        const randomAmount = Math.floor(Math.random() * (max - min + 1)) + min;
         return [randomAmount];
     }
     catch (error) {
@@ -176,7 +171,7 @@ redisOn.subscribe("notification_control", (err) => {
     }
     console.log("Subscribed to notification_control channel.");
 });
-redisOn.on("message", (channel, message) => {
+redisOn.on("message", async (channel, message) => {
     if (channel === "notification_control") {
         if (message === "STOP") {
             isRunning = false;
@@ -192,6 +187,7 @@ redisOn.on("message", (channel, message) => {
                 startJob();
             }
         }
+        await redis.set("notification_control", message);
     }
 });
 export default app;

@@ -20,7 +20,7 @@ export const referralDirectPostController = async (c: Context) => {
 
     return c.json(data, 200);
   } catch (error) {
-    return sendErrorResponse("Invalid data", 400);
+    return sendErrorResponse("Internal Server Error", 500);
   }
 };
 
@@ -34,29 +34,25 @@ export const referralUserPostController = async (c: Context) => {
 
     return c.json(data, 200);
   } catch (error) {
-    return sendErrorResponse("Invalid data", 400);
+    console.log(error);
+    return sendErrorResponse("Internal Server Error", 500);
   }
 };
 
 export const referralIndirectPostController = async (c: Context) => {
   try {
-    const { page, limit, search, columnAccessor, isAscendingSort } =
-      await c.req.json();
-
+    const params = c.get("params");
     const teamMemberProfile = c.get("teamMemberProfile");
 
     const data = await referralIndirectModelPost({
-      page,
-      limit,
-      search,
-      columnAccessor,
-      isAscendingSort,
+      ...params,
       teamMemberProfile,
     });
 
     return c.json(data);
   } catch (error) {
-    return sendErrorResponse("Invalid data", 400);
+    console.log(error);
+    return sendErrorResponse("Internal Server Error", 500);
   }
 };
 
