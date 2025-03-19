@@ -10,6 +10,10 @@ export const referralDirectModelPost = async (params: {
   columnAccessor: string;
   isAscendingSort: boolean;
   teamMemberProfile: alliance_member_table;
+  dateFilter: {
+    start: string;
+    end: string;
+  };
 }) => {
   const {
     page,
@@ -18,9 +22,10 @@ export const referralDirectModelPost = async (params: {
     columnAccessor,
     isAscendingSort,
     teamMemberProfile,
+    dateFilter,
   } = params;
 
-  const cacheKey = `referral-direct-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}`;
+  const cacheKey = `referral-direct-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}-${dateFilter?.start}-${dateFilter?.end}`;
 
   const cachedData = await redis.get(cacheKey);
 
@@ -29,16 +34,26 @@ export const referralDirectModelPost = async (params: {
   }
 
   const offset = Math.max((page - 1) * limit, 0);
+  const startDate = dateFilter?.start
+    ? getPhilippinesTime(new Date(dateFilter?.start), "start")
+    : null;
+  const endDate = dateFilter?.end
+    ? getPhilippinesTime(new Date(dateFilter?.end), "end")
+    : null;
 
   const searchCondition = search
-    ? Prisma.raw(
-        `AND (u.user_first_name ILIKE ${
-          "%" + search + "%"
-        } OR u.user_last_name ILIKE ${
-          "%" + search + "%"
-        } OR u.user_username ILIKE ${"%" + search + "%"})`
-      )
+    ? Prisma.sql`
+      AND (u.user_first_name ILIKE ${"%" + search + "%"} 
+      OR u.user_last_name ILIKE ${"%" + search + "%"} 
+      OR u.user_username ILIKE ${"%" + search + "%"})`
     : Prisma.empty;
+
+  const dateFilterCondition =
+    dateFilter?.start && dateFilter?.end
+      ? Prisma.sql`AND pa.package_ally_bounty_log_date_created 
+        BETWEEN ${Prisma.raw(`'${startDate}'::timestamptz`)} 
+        AND ${Prisma.raw(`'${endDate}'::timestamptz`)}`
+      : Prisma.empty;
 
   const direct = await prisma.$queryRaw`
     SELECT
@@ -52,6 +67,7 @@ export const referralDirectModelPost = async (params: {
     JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
     WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid AND pa.package_ally_bounty_type = 'DIRECT'
       ${searchCondition}
+      ${dateFilterCondition}
     GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
     ORDER BY pa.package_ally_bounty_log_date_created DESC
     LIMIT ${limit} OFFSET ${offset}
@@ -66,24 +82,14 @@ export const referralDirectModelPost = async (params: {
         JOIN packages_schema.package_ally_bounty_log pa ON pa.package_ally_bounty_from = m.alliance_member_id
         WHERE pa.package_ally_bounty_member_id = ${teamMemberProfile.alliance_member_id}::uuid AND pa.package_ally_bounty_type = 'DIRECT'
           ${searchCondition}
+          ${dateFilterCondition}
         GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
     ) AS subquery;
 `;
 
-  const totalReferralCountDirect =
-    await prisma.dashboard_earnings_summary.findUnique({
-      where: {
-        member_id: teamMemberProfile.alliance_member_id,
-      },
-      select: {
-        direct_referral_count: true,
-      },
-    });
-
   const returnData = {
     data: direct,
     totalCount: Number(totalCount[0]?.count || 0),
-    totalReferralCountDirect: totalReferralCountDirect?.direct_referral_count,
   };
 
   await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });

@@ -20,6 +20,7 @@ export const referralDirectPostController = async (c: Context) => {
 
     return c.json(data, 200);
   } catch (error) {
+    console.log(error);
     return sendErrorResponse("Internal Server Error", 500);
   }
 };

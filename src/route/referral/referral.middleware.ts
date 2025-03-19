@@ -38,7 +38,7 @@ export const referralDirectMiddleware = async (c: Context, next: Next) => {
     return sendErrorResponse("Too many requests. Please try again later.", 429);
   }
 
-  const { page, limit, search, columnAccessor, isAscendingSort } =
+  const { page, limit, search, columnAccessor, isAscendingSort, dateFilter } =
     await c.req.json();
 
   const parsedData = directReferralsSchemaPost.parse({
@@ -47,6 +47,7 @@ export const referralDirectMiddleware = async (c: Context, next: Next) => {
     search,
     columnAccessor,
     isAscendingSort,
+    dateFilter,
   });
 
   if (!parsedData) {
