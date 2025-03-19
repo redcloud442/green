@@ -111,7 +111,10 @@ export const referralIndirectModelPost = async (params) => {
         : null;
     const offset = Math.max((page - 1) * limit, 0);
     const searchCondition = search
-        ? Prisma.raw(`AND (ut.user_first_name ILIKE ${`%${search}%`} OR ut.user_last_name ILIKE ${`%${search}%`} OR ut.user_username ILIKE ${`%${search}%`})`)
+        ? Prisma.sql `
+      AND (ut.user_first_name ILIKE ${"%" + search + "%"} 
+      OR ut.user_last_name ILIKE ${"%" + search + "%"} 
+      OR ut.user_username ILIKE ${"%" + search + "%"})`
         : Prisma.empty;
     const dateFilterCondition = dateFilter?.start && dateFilter?.end
         ? Prisma.sql `AND pa.package_ally_bounty_log_date_created 
