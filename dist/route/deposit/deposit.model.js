@@ -5,6 +5,8 @@ import { getPhilippinesTime } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 export const depositPostModel = async (params) => {
     const { amount, accountName, accountNumber, publicUrls, topUpMode } = params.TopUpFormValues;
+    const startDate = getPhilippinesTime(new Date(), "start");
+    const endDate = getPhilippinesTime(new Date(), "end");
     const merchantData = await prisma.merchant_table.findFirst({
         where: {
             merchant_id: topUpMode,
@@ -35,6 +37,21 @@ export const depositPostModel = async (params) => {
         if (existingDeposit) {
             throw new Error("Invalid request");
         }
+        const countAllRequests = await tx.$queryRaw `
+      SELECT am.alliance_member_id AS "approverId",
+             COALESCE(approvedRequests."requestCount", 0) AS "requestCount"
+      FROM alliance_schema.alliance_member_table am
+      LEFT JOIN (
+        SELECT atr.alliance_top_up_request_approved_by AS "approverId",
+               COUNT(atr.alliance_top_up_request_id) AS "requestCount"
+        FROM alliance_schema.alliance_top_up_request_table atr
+        WHERE atr.alliance_top_up_request_date::timestamptz BETWEEN ${startDate}::timestamptz AND ${endDate}::timestamptz
+        GROUP BY atr.alliance_top_up_request_approved_by
+      ) approvedRequests ON am.alliance_member_id = approvedRequests."approverId"
+      WHERE am.alliance_member_role = 'MERCHANT'
+      ORDER BY "requestCount" ASC
+      LIMIT 1;
+    `;
         const newDeposit = await tx.alliance_top_up_request_table.create({
             data: {
                 alliance_top_up_request_amount: Number(amount),
@@ -42,6 +59,7 @@ export const depositPostModel = async (params) => {
                 alliance_top_up_request_name: accountName,
                 alliance_top_up_request_account: accountNumber,
                 alliance_top_up_request_member_id: params.teamMemberProfile.alliance_member_id,
+                alliance_top_up_request_approved_by: countAllRequests[0].approverId ?? null,
             },
         });
         publicUrls.forEach(async (url) => {
@@ -81,6 +99,12 @@ export const depositPutModel = async (params) => {
         }
         if (existingRequest.alliance_top_up_request_status !== "PENDING") {
             throw new Error("Request is not pending.");
+        }
+        if (teamMemberProfile.alliance_member_role === "MERCHANT") {
+            if (existingRequest.alliance_top_up_request_approved_by !==
+                teamMemberProfile.alliance_member_id) {
+                throw new Error("Invalid request.");
+            }
         }
         const updatedRequest = await tx.alliance_top_up_request_table.update({
             where: { alliance_top_up_request_id: requestId },
@@ -211,6 +235,9 @@ export const depositListPostModel = async (params, teamMemberProfile) => {
     ];
     if (merchantFilter) {
         commonConditions.push(Prisma.raw(`approver.user_id::TEXT = '${merchantFilter}'`));
+    }
+    if (teamMemberProfile.alliance_member_role === "MERCHANT") {
+        commonConditions.push(Prisma.raw(`t.alliance_top_up_request_approved_by = '${teamMemberProfile.alliance_member_id}'::uuid`));
     }
     if (userFilter) {
         commonConditions.push(Prisma.raw(`u.user_id::TEXT = '${userFilter}'`));
