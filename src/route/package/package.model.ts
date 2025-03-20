@@ -457,6 +457,21 @@ export const claimPackagePostModel = async (params: {
       throw new Error("Invalid request");
     }
 
+    const updatedPackage = await tx.package_member_connection_table.updateMany({
+      where: {
+        package_member_connection_id: packageConnectionId,
+        package_member_status: { not: "ENDED" },
+      },
+      data: {
+        package_member_status: "ENDED",
+        package_member_is_ready_to_claim: false,
+      },
+    });
+
+    if (updatedPackage.count === 0) {
+      throw new Error("Invalid request. Package has already been claimed.");
+    }
+
     await tx.package_member_connection_table.update({
       where: { package_member_connection_id: packageConnectionId },
       data: {
