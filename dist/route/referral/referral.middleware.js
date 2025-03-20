@@ -17,13 +17,14 @@ export const referralDirectMiddleware = async (c, next) => {
     if (!isAllowed) {
         return sendErrorResponse("Too many requests. Please try again later.", 429);
     }
-    const { page, limit, search, columnAccessor, isAscendingSort } = await c.req.json();
+    const { page, limit, search, columnAccessor, isAscendingSort, dateFilter } = await c.req.json();
     const parsedData = directReferralsSchemaPost.parse({
         page,
         limit,
         search,
         columnAccessor,
         isAscendingSort,
+        dateFilter,
     });
     if (!parsedData) {
         return sendErrorResponse("Invalid data", 400);

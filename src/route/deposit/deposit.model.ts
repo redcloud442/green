@@ -60,25 +60,6 @@ export const depositPostModel = async (params: {
       throw new Error("Invalid request");
     }
 
-    const countAllRequests: {
-      approverId: string;
-      requestCount: bigint;
-    }[] = await tx.$queryRaw`
-      SELECT am.alliance_member_id AS "approverId",
-             COALESCE(approvedRequests."requestCount", 0) AS "requestCount"
-      FROM alliance_schema.alliance_member_table am
-      LEFT JOIN (
-        SELECT atr.alliance_top_up_request_approved_by AS "approverId",
-               COUNT(atr.alliance_top_up_request_id) AS "requestCount"
-        FROM alliance_schema.alliance_top_up_request_table atr
-        WHERE atr.alliance_top_up_request_date::timestamptz BETWEEN ${startDate}::timestamptz AND ${endDate}::timestamptz
-        GROUP BY atr.alliance_top_up_request_approved_by
-      ) approvedRequests ON am.alliance_member_id = approvedRequests."approverId"
-      WHERE am.alliance_member_role = 'MERCHANT'
-      ORDER BY "requestCount" ASC
-      LIMIT 1;
-    `;
-
     const newDeposit = await tx.alliance_top_up_request_table.create({
       data: {
         alliance_top_up_request_amount: Number(amount),
@@ -87,8 +68,6 @@ export const depositPostModel = async (params: {
         alliance_top_up_request_account: accountNumber,
         alliance_top_up_request_member_id:
           params.teamMemberProfile.alliance_member_id,
-        alliance_top_up_request_approved_by:
-          countAllRequests[0].approverId ?? null,
       },
     });
 
@@ -142,15 +121,6 @@ export const depositPutModel = async (params: {
 
     if (existingRequest.alliance_top_up_request_status !== "PENDING") {
       throw new Error("Request is not pending.");
-    }
-
-    if (teamMemberProfile.alliance_member_role === "MERCHANT") {
-      if (
-        existingRequest.alliance_top_up_request_approved_by !==
-        teamMemberProfile.alliance_member_id
-      ) {
-        throw new Error("Invalid request.");
-      }
     }
 
     const updatedRequest = await tx.alliance_top_up_request_table.update({
@@ -278,16 +248,16 @@ export const depositHistoryPostModel = async (
   )}`;
 
   const depositHistory: TopUpRequestData[] = await prisma.$queryRaw`
-      SELECT 
+      SELECT
         u.user_first_name,
         u.user_last_name,
         u.user_email,
         m.alliance_member_id,
         t.*
       FROM alliance_schema.alliance_top_up_request_table t
-      JOIN alliance_schema.alliance_member_table m 
+      JOIN alliance_schema.alliance_member_table m
         ON t.alliance_top_up_request_member_id = m.alliance_member_id
-      JOIN user_schema.user_table u 
+      JOIN user_schema.user_table u
         ON u.user_id = m.alliance_member_user_id
       WHERE ${dataWhereClause}
       ${orderBy}
@@ -296,12 +266,12 @@ export const depositHistoryPostModel = async (
     `;
 
   const totalCount: { count: bigint }[] = await prisma.$queryRaw`
-        SELECT 
+        SELECT
           COUNT(*) AS count
         FROM alliance_schema.alliance_top_up_request_table t
-        JOIN alliance_schema.alliance_member_table m 
+        JOIN alliance_schema.alliance_member_table m
           ON t.alliance_top_up_request_member_id = m.alliance_member_id
-        JOIN user_schema.user_table u 
+        JOIN user_schema.user_table u
         ON u.user_id = m.alliance_member_user_id
       WHERE ${dataWhereClause}
     `;
@@ -366,14 +336,6 @@ export const depositListPostModel = async (
     );
   }
 
-  if (teamMemberProfile.alliance_member_role === "MERCHANT") {
-    commonConditions.push(
-      Prisma.raw(
-        `t.alliance_top_up_request_approved_by = '${teamMemberProfile.alliance_member_id}'::uuid`
-      )
-    );
-  }
-
   if (userFilter) {
     commonConditions.push(Prisma.raw(`u.user_id::TEXT = '${userFilter}'`));
   }
@@ -428,7 +390,7 @@ export const depositListPostModel = async (
   )}`;
 
   const topUpRequests: TopUpRequestData[] = await prisma.$queryRaw`
-SELECT 
+SELECT
   u.user_id,
   u.user_first_name,
   u.user_last_name,
@@ -442,28 +404,28 @@ SELECT
   approver.user_id AS approver_id,
   array_agg(att.alliance_top_up_request_attachment_url) AS attachment_url
 FROM alliance_schema.alliance_top_up_request_table t
-JOIN alliance_schema.alliance_member_table m 
+JOIN alliance_schema.alliance_member_table m
   ON t.alliance_top_up_request_member_id = m.alliance_member_id
-JOIN user_schema.user_table u 
+JOIN user_schema.user_table u
   ON u.user_id = m.alliance_member_user_id
-LEFT JOIN alliance_schema.alliance_member_table mt 
+LEFT JOIN alliance_schema.alliance_member_table mt
   ON mt.alliance_member_id = t.alliance_top_up_request_approved_by
-LEFT JOIN user_schema.user_table approver 
+LEFT JOIN user_schema.user_table approver
   ON approver.user_id = mt.alliance_member_user_id
 LEFT JOIN alliance_schema.alliance_top_up_request_attachment_table att
   ON att.alliance_top_up_request_attachment_request_id = t.alliance_top_up_request_id
 WHERE ${dataWhereClause}
-GROUP BY 
-  u.user_id, 
-  u.user_first_name, 
-  u.user_last_name, 
-  u.user_email, 
-  u.user_username, 
+GROUP BY
+  u.user_id,
+  u.user_first_name,
+  u.user_last_name,
+  u.user_email,
+  u.user_username,
   u.user_profile_picture,
-  m.alliance_member_id, 
-  t.alliance_top_up_request_id, 
-  approver.user_username, 
-  approver.user_profile_picture, 
+  m.alliance_member_id,
+  t.alliance_top_up_request_id,
+  approver.user_username,
+  approver.user_profile_picture,
   approver.user_id
 ${orderBy}
 LIMIT ${Prisma.raw(limit.toString())}
@@ -472,17 +434,17 @@ OFFSET ${Prisma.raw(offset.toString())}
 
   const statusCounts: { status: string; count: bigint }[] =
     await prisma.$queryRaw`
-      SELECT 
-        t.alliance_top_up_request_status AS status, 
+      SELECT
+        t.alliance_top_up_request_status AS status,
         COUNT(*) AS count
       FROM alliance_schema.alliance_top_up_request_table t
-      JOIN alliance_schema.alliance_member_table m 
+      JOIN alliance_schema.alliance_member_table m
         ON t.alliance_top_up_request_member_id = m.alliance_member_id
-      JOIN user_schema.user_table u 
+      JOIN user_schema.user_table u
         ON u.user_id = m.alliance_member_user_id
-      LEFT JOIN alliance_schema.alliance_member_table mt 
+      LEFT JOIN alliance_schema.alliance_member_table mt
         ON mt.alliance_member_id = t.alliance_top_up_request_approved_by
-      LEFT JOIN user_schema.user_table approver 
+      LEFT JOIN user_schema.user_table approver
         ON approver.user_id = mt.alliance_member_user_id
       WHERE ${countWhereClause}
       GROUP BY t.alliance_top_up_request_status
@@ -575,8 +537,8 @@ export const depositReportPostModel = async (params: {
     });
 
   const depositDailyIncome = await prisma.$queryRaw`
-    SELECT 
-      DATE_TRUNC('day', alliance_top_up_request_date_updated) AS date, 
+    SELECT
+      DATE_TRUNC('day', alliance_top_up_request_date_updated) AS date,
       SUM(alliance_top_up_request_amount) AS amount
     FROM alliance_schema.alliance_top_up_request_table
     WHERE alliance_top_up_request_date_updated::Date BETWEEN ${

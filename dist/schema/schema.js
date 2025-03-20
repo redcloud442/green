@@ -198,6 +198,12 @@ export const directReferralsSchemaPost = z.object({
     search: z.string().optional(),
     columnAccessor: z.string().min(3),
     isAscendingSort: z.boolean(),
+    dateFilter: z
+        .object({
+        start: z.string().optional(),
+        end: z.string().optional(),
+    })
+        .optional(),
 });
 export const indirectReferralsSchemaPost = z.object({
     page: z.number().min(1),
