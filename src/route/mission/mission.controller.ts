@@ -21,6 +21,7 @@ export const missionPostController = async (c: Context) => {
 
     return c.json(mission, 200);
   } catch (error) {
+    console.log(error);
     return c.json({ error: "Internal Server Error" }, 500);
   }
 };

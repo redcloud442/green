@@ -71,7 +71,7 @@ export const withdrawModel = async (params: {
    WHERE alliance_earnings_member_id = ${teamMemberProfile.alliance_member_id}::uuid 
    FOR UPDATE`;
 
-    if (!amountMatch) {
+    if (!amountMatch[0]) {
       throw new Error("Invalid request.");
     }
     const { alliance_olympus_earnings, alliance_referral_bounty } =
@@ -397,6 +397,7 @@ export const withdrawListPostModel = async (params: {
       PENDING: { data: [], count: BigInt(0) },
     },
     totalCount: BigInt(0),
+    totalPendingWithdrawal: 0,
   };
 
   const {
@@ -542,6 +543,25 @@ export const withdrawListPostModel = async (params: {
       );
     }
   });
+
+  const totalPendingWithdrawal =
+    await prisma.alliance_withdrawal_request_table.aggregate({
+      where: {
+        alliance_withdrawal_request_status: "PENDING",
+        alliance_withdrawal_request_approved_by:
+          teamMemberProfile.alliance_member_role === "ACCOUNTING"
+            ? teamMemberProfile.alliance_member_id
+            : null,
+      },
+      _sum: {
+        alliance_withdrawal_request_amount: true,
+        alliance_withdrawal_request_fee: true,
+      },
+    });
+
+  returnData.totalPendingWithdrawal =
+    Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_amount) -
+    Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_fee);
 
   returnData.totalCount = statusCounts.reduce(
     (sum, item) => sum + BigInt(item.count),
