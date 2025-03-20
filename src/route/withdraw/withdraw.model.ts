@@ -561,8 +561,8 @@ export const withdrawListPostModel = async (params: {
 
 
   returnData.totalPendingWithdrawal =
-    Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_amount?.toFixed(2)) -
-    Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_fee?.toFixed(2));
+    Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_amount) -
+    Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_fee);
 
   returnData.totalCount = statusCounts.reduce(
     (sum, item) => sum + BigInt(item.count),
