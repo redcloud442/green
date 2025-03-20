@@ -548,10 +548,10 @@ export const withdrawListPostModel = async (params: {
     await prisma.alliance_withdrawal_request_table.aggregate({
       where: {
         alliance_withdrawal_request_status: "PENDING",
-        alliance_withdrawal_request_approved_by:
-          teamMemberProfile.alliance_member_role === "ACCOUNTING"
-            ? teamMemberProfile.alliance_member_id
-            : null,
+        ...(teamMemberProfile.alliance_member_role === "ACCOUNTING" && {
+          alliance_withdrawal_request_approved_by:
+            teamMemberProfile.alliance_member_id,
+        }),
       },
       _sum: {
         alliance_withdrawal_request_amount: true,
