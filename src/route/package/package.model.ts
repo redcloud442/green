@@ -13,97 +13,103 @@ export const packagePostModel = async (params: {
 }) => {
   const { amount, packageId, teamMemberProfile, user } = params;
 
-  const [packageData, earningsData, referralData] = await Promise.all([
-    prisma.package_table.findUnique({
-      where: { package_id: packageId },
-      select: {
-        package_percentage: true,
-        packages_days: true,
-        package_is_disabled: true,
-        package_name: true,
-      },
-    }),
-    prisma.alliance_earnings_table.findUnique({
-      where: {
-        alliance_earnings_member_id: teamMemberProfile.alliance_member_id,
-      },
-      select: {
-        alliance_olympus_wallet: true,
-        alliance_referral_bounty: true,
-        alliance_olympus_earnings: true,
-        alliance_combined_earnings: true,
-      },
-    }),
-    prisma.alliance_referral_table.findFirst({
-      where: {
-        alliance_referral_member_id: teamMemberProfile.alliance_member_id,
-      },
-      select: { alliance_referral_hierarchy: true },
-    }),
-  ]);
-
-  if (!packageData) {
-    throw new Error("Package not found.");
-  }
-
-  if (packageData.package_is_disabled) {
-    throw new Error("Package is disabled.");
-  }
-
-  if (!earningsData) {
-    throw new Error("Earnings record not found.");
-  }
-
-  const {
-    alliance_olympus_wallet,
-    alliance_olympus_earnings,
-    alliance_referral_bounty,
-    alliance_combined_earnings,
-  } = earningsData;
-
-  const combinedEarnings = Number(alliance_combined_earnings.toFixed(2));
-  const requestedAmount = Number(amount.toFixed(2));
-
-  if (combinedEarnings < requestedAmount) {
-    throw new Error("Insufficient balance in the wallet.");
-  }
-
-  const {
-    olympusWallet,
-    olympusEarnings,
-    referralWallet,
-    updatedCombinedWallet,
-    isReinvestment,
-    isFromWallet,
-  } = deductFromWallets(
-    requestedAmount,
-    combinedEarnings,
-    Number(alliance_olympus_wallet.toFixed(2)),
-    Number(alliance_olympus_earnings.toFixed(2)),
-    Number(alliance_referral_bounty.toFixed(2))
-  );
-
-  const packagePercentage = new Prisma.Decimal(
-    Number(packageData.package_percentage)
-  ).div(100);
-
-  const packageAmountEarnings = new Prisma.Decimal(requestedAmount).mul(
-    packagePercentage
-  );
-
-  // Generate referral chain with a capped depth
-  const referralChain = generateReferralChain(
-    referralData?.alliance_referral_hierarchy ?? null,
-    teamMemberProfile.alliance_member_id,
-    100 // Cap the depth to 100 levels
-  );
-
-  let bountyLogs: Prisma.package_ally_bounty_logCreateManyInput[] = [];
-  let transactionLogs: Prisma.alliance_transaction_tableCreateManyInput[] = [];
-  let notificationLogs: Prisma.alliance_notification_tableCreateManyInput[] =
-    [];
-
   const connectionData = await prisma.$transaction(async (tx) => {
+    const [packageData, earningsData, referralData] = await Promise.all([
+      tx.package_table.findUnique({
+        where: { package_id: packageId },
+        select: {
+          package_percentage: true,
+          packages_days: true,
+          package_is_disabled: true,
+          package_name: true,
+        },
+      }),
+      tx.$queryRaw<
+        {
+          alliance_combined_earnings: number;
+          alliance_olympus_wallet: number;
+          alliance_olympus_earnings: number;
+          alliance_referral_bounty: number;
+        }[]
+      >`SELECT 
+       alliance_combined_earnings,
+       alliance_olympus_wallet,
+       alliance_olympus_earnings,
+       alliance_referral_bounty
+       FROM alliance_schema.alliance_earnings_table 
+       WHERE alliance_earnings_member_id = ${teamMemberProfile.alliance_member_id}::uuid 
+       FOR UPDATE`,
+
+      tx.alliance_referral_table.findFirst({
+        where: {
+          alliance_referral_member_id: teamMemberProfile.alliance_member_id,
+        },
+        select: { alliance_referral_hierarchy: true },
+      }),
+    ]);
+
+    if (!packageData) {
+      throw new Error("Package not found.");
+    }
+
+    if (packageData.package_is_disabled) {
+      throw new Error("Package is disabled.");
+    }
+
+    if (!earningsData) {
+      throw new Error("Earnings record not found.");
+    }
+
+    const {
+      alliance_combined_earnings,
+      alliance_olympus_wallet,
+      alliance_olympus_earnings,
+      alliance_referral_bounty,
+    } = earningsData[0];
+
+    const combinedEarnings = Number(alliance_combined_earnings.toFixed(2));
+    const requestedAmount = Number(amount.toFixed(2));
+
+    if (combinedEarnings < requestedAmount) {
+      throw new Error("Insufficient balance in the wallet.");
+    }
+
+    const {
+      olympusWallet,
+      olympusEarnings,
+      referralWallet,
+      updatedCombinedWallet,
+      isReinvestment,
+      isFromWallet,
+    } = deductFromWallets(
+      requestedAmount,
+      combinedEarnings,
+      Number(alliance_olympus_wallet.toFixed(2)),
+      Number(alliance_olympus_earnings.toFixed(2)),
+      Number(alliance_referral_bounty.toFixed(2))
+    );
+
+    const packagePercentage = new Prisma.Decimal(
+      Number(packageData.package_percentage)
+    ).div(100);
+
+    const packageAmountEarnings = new Prisma.Decimal(requestedAmount).mul(
+      packagePercentage
+    );
+
+    // Generate referral chain with a capped depth
+    const referralChain = generateReferralChain(
+      referralData?.alliance_referral_hierarchy ?? null,
+      teamMemberProfile.alliance_member_id,
+      100 // Cap the depth to 100 levels
+    );
+
+    let bountyLogs: Prisma.package_ally_bounty_logCreateManyInput[] = [];
+    let transactionLogs: Prisma.alliance_transaction_tableCreateManyInput[] =
+      [];
+    let notificationLogs: Prisma.alliance_notification_tableCreateManyInput[] =
+      [];
+
     const connectionData = await tx.package_member_connection_table.create({
       data: {
         package_member_member_id: teamMemberProfile.alliance_member_id,
@@ -239,28 +245,27 @@ export const packagePostModel = async (params: {
         });
       }
     }
+    if (isFromWallet) {
+      const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
+        "en-US",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
+      )}: ${packageData.package_name} Package. Congratulations!`;
+      try {
+        await prisma.package_notification_table.create({
+          data: {
+            package_notification_message: message,
+          },
+        });
+      } catch (error) {
+        console.error("Notification Error:", error);
+      }
+    }
 
     return connectionData;
   });
-
-  if (isFromWallet) {
-    const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
-      "en-US",
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }
-    )}: ${packageData.package_name} Package. Congratulations!`;
-    try {
-      await prisma.package_notification_table.create({
-        data: {
-          package_notification_message: message,
-        },
-      });
-    } catch (error) {
-      console.error("Notification Error:", error);
-    }
-  }
 
   return connectionData;
 };
