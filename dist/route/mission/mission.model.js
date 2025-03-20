@@ -323,149 +323,149 @@ export const getMissions = async (params) => {
 export const postMission = async (params) => {
     const { teamMemberProfile } = params;
     const allianceMemberId = teamMemberProfile.alliance_member_id;
-    let missionProgress = await prisma.alliance_mission_progress_table.findFirst({
-        where: { alliance_member_id: allianceMemberId, is_completed: false },
-        include: {
-            mission: {
-                include: {
-                    tasks: {
-                        include: {
-                            task_progress: {
-                                where: { alliance_member_id: allianceMemberId },
-                            },
-                        },
-                    },
-                },
-            },
-        },
-    });
-    if (!missionProgress)
-        return null;
-    if (missionProgress.is_completed)
-        return null;
-    const isMissionCompleted = missionProgress.mission.tasks.length > 0 &&
-        missionProgress.mission.tasks.every((task) => task.task_progress.length > 0 &&
-            task.task_progress.every((tp) => tp.is_completed));
-    if (isMissionCompleted) {
-        await prisma.alliance_mission_progress_table.update({
-            where: {
-                alliance_mission_progress_id: missionProgress.alliance_mission_progress_id,
-            },
-            data: { is_completed: true, reward_claimed: true },
-        });
-        const completedMissionIds = await prisma.alliance_mission_progress_table.findMany({
-            where: { alliance_member_id: allianceMemberId },
-            select: { alliance_mission_id: true },
-        });
-        const nextMission = await prisma.alliance_mission_table.findFirst({
-            where: {
-                alliance_mission_id: {
-                    notIn: completedMissionIds.map((p) => p.alliance_mission_id),
-                },
-            },
-            orderBy: { alliance_mission_order: "asc" },
-        });
-        await prisma.alliance_transaction_table.create({
-            data: {
-                transaction_member_id: allianceMemberId,
-                transaction_amount: missionProgress.mission.alliance_mission_reward ?? 0,
-                transaction_description: `Mission ${missionProgress.mission.alliance_mission_order} Completed: Mission ${missionProgress.mission.alliance_mission_order}`,
-                transaction_date: new Date(),
-            },
-        });
-        if (nextMission) {
-            await prisma.alliance_mission_progress_table.create({
-                data: {
-                    alliance_member_id: allianceMemberId,
-                    alliance_mission_id: nextMission.alliance_mission_id,
-                    is_completed: false,
-                    reward_claimed: false,
-                },
-            });
-            // Fetch new mission progress
-            missionProgress = await prisma.alliance_mission_progress_table.findFirst({
-                where: { alliance_member_id: allianceMemberId, is_completed: false },
-                include: {
-                    mission: {
-                        include: {
-                            tasks: {
-                                include: {
-                                    task_progress: {
-                                        where: { alliance_member_id: allianceMemberId },
-                                    },
+    const packageData = await prisma.$transaction(async (tx) => {
+        let missionProgress = await tx.alliance_mission_progress_table.findFirst({
+            where: { alliance_member_id: allianceMemberId, is_completed: false },
+            include: {
+                mission: {
+                    include: {
+                        tasks: {
+                            include: {
+                                task_progress: {
+                                    where: { alliance_member_id: allianceMemberId },
                                 },
                             },
                         },
                     },
                 },
+            },
+        });
+        if (!missionProgress)
+            return null;
+        if (missionProgress.is_completed)
+            return null;
+        const isMissionCompleted = missionProgress.mission.tasks.length > 0 &&
+            missionProgress.mission.tasks.every((task) => task.task_progress.length > 0 &&
+                task.task_progress.every((tp) => tp.is_completed));
+        if (isMissionCompleted) {
+            await tx.alliance_mission_progress_table.update({
+                where: {
+                    alliance_mission_progress_id: missionProgress.alliance_mission_progress_id,
+                },
+                data: { is_completed: true, reward_claimed: true },
             });
+            const completedMissionIds = await tx.alliance_mission_progress_table.findMany({
+                where: { alliance_member_id: allianceMemberId },
+                select: { alliance_mission_id: true },
+            });
+            const nextMission = await tx.alliance_mission_table.findFirst({
+                where: {
+                    alliance_mission_id: {
+                        notIn: completedMissionIds.map((p) => p.alliance_mission_id),
+                    },
+                },
+                orderBy: { alliance_mission_order: "asc" },
+            });
+            await tx.alliance_transaction_table.create({
+                data: {
+                    transaction_member_id: allianceMemberId,
+                    transaction_amount: missionProgress.mission.alliance_mission_reward ?? 0,
+                    transaction_description: `Mission ${missionProgress.mission.alliance_mission_order} Completed: Mission ${missionProgress.mission.alliance_mission_order}`,
+                    transaction_date: new Date(),
+                },
+            });
+            if (nextMission) {
+                await tx.alliance_mission_progress_table.create({
+                    data: {
+                        alliance_member_id: allianceMemberId,
+                        alliance_mission_id: nextMission.alliance_mission_id,
+                        is_completed: false,
+                        reward_claimed: false,
+                    },
+                });
+                // Fetch new mission progress
+                missionProgress = await tx.alliance_mission_progress_table.findFirst({
+                    where: { alliance_member_id: allianceMemberId, is_completed: false },
+                    include: {
+                        mission: {
+                            include: {
+                                tasks: {
+                                    include: {
+                                        task_progress: {
+                                            where: { alliance_member_id: allianceMemberId },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                });
+            }
         }
-    }
-    const allianceRanking = await prisma.alliance_ranking_table.findUnique({
-        where: { alliance_ranking_member_id: allianceMemberId },
-        select: { alliance_rank: true },
-    });
-    const requiredRankEntry = rankMapping.find((r) => r.index === missionProgress?.mission.alliance_mission_order);
-    const requiredRank = requiredRankEntry?.rank ?? null;
-    const hasRequiredRank = requiredRank !== null && allianceRanking?.alliance_rank === requiredRank;
-    const formattedTask = missionProgress?.mission.tasks.map((task) => ({
-        task_id: task.alliance_mission_task_id,
-        task_name: task.alliance_mission_task_name,
-        task_target: task.alliance_mission_task_type === "BADGE" &&
-            task.alliance_mission_task_target === 1
-            ? "1"
-            : task.alliance_mission_task_target === 2 &&
-                task.alliance_mission_task_type === "BADGE"
+        const allianceRanking = await tx.alliance_ranking_table.findUnique({
+            where: { alliance_ranking_member_id: allianceMemberId },
+            select: { alliance_rank: true },
+        });
+        const requiredRankEntry = rankMapping.find((r) => r.index === missionProgress?.mission.alliance_mission_order);
+        const requiredRank = requiredRankEntry?.rank ?? null;
+        const hasRequiredRank = requiredRank !== null && allianceRanking?.alliance_rank === requiredRank;
+        const formattedTask = missionProgress?.mission.tasks.map((task) => ({
+            task_id: task.alliance_mission_task_id,
+            task_name: task.alliance_mission_task_name,
+            task_target: task.alliance_mission_task_type === "BADGE" &&
+                task.alliance_mission_task_target === 1
                 ? "1"
-                : task.alliance_mission_task_target === 3 &&
+                : task.alliance_mission_task_target === 2 &&
                     task.alliance_mission_task_type === "BADGE"
                     ? "1"
-                    : task.alliance_mission_task_target === 4 &&
+                    : task.alliance_mission_task_target === 3 &&
                         task.alliance_mission_task_type === "BADGE"
                         ? "1"
-                        : task.alliance_mission_task_target === 5 &&
+                        : task.alliance_mission_task_target === 4 &&
                             task.alliance_mission_task_type === "BADGE"
                             ? "1"
-                            : task.alliance_mission_task_target,
-        task_type: task.alliance_mission_task_type,
-        task_to_achieve: task.alliance_mission_task_type === "BADGE" &&
-            task.alliance_mission_task_target === 1
-            ? "iron"
-            : task.alliance_mission_task_target &&
-                task.alliance_mission_task_type === "BADGE" &&
-                task.alliance_mission_task_target === 2
-                ? "bronze"
+                            : task.alliance_mission_task_target === 5 &&
+                                task.alliance_mission_task_type === "BADGE"
+                                ? "1"
+                                : task.alliance_mission_task_target,
+            task_type: task.alliance_mission_task_type,
+            task_to_achieve: task.alliance_mission_task_type === "BADGE" &&
+                task.alliance_mission_task_target === 1
+                ? "iron"
                 : task.alliance_mission_task_target &&
                     task.alliance_mission_task_type === "BADGE" &&
-                    task.alliance_mission_task_target === 3
-                    ? "silver"
-                    : task.alliance_mission_task_target === 4 &&
-                        task.alliance_mission_task_type === "BADGE"
-                        ? "gold"
-                        : task.alliance_mission_task_target === 5 &&
+                    task.alliance_mission_task_target === 2
+                    ? "bronze"
+                    : task.alliance_mission_task_target &&
+                        task.alliance_mission_task_type === "BADGE" &&
+                        task.alliance_mission_task_target === 3
+                        ? "silver"
+                        : task.alliance_mission_task_target === 4 &&
                             task.alliance_mission_task_type === "BADGE"
-                            ? "platinum"
-                            : task.alliance_mission_task_target,
-        progress: task.alliance_mission_task_type === "BADGE" && hasRequiredRank
-            ? 1
-            : task.task_progress.reduce((acc, tp) => acc + tp.progress_count, 0),
-        is_completed: task.task_progress.every((tp) => tp.is_completed),
-    }));
-    const missionData = {
-        mission_id: missionProgress?.mission.alliance_mission_id,
-        mission_name: missionProgress?.mission.alliance_mission_name,
-        mission_order: missionProgress?.mission.alliance_mission_order,
-        reward: missionProgress?.mission.alliance_mission_reward,
-        tasks: formattedTask,
-        isMissionCompleted: false,
-    };
-    const lastCompletedMission = await prisma.alliance_mission_progress_table.findFirst({
-        where: { alliance_member_id: allianceMemberId, is_completed: true },
-        orderBy: { alliance_mission_progress_created: "desc" },
-        include: { mission: true },
-    });
-    const packageRewardAmount = lastCompletedMission?.mission.alliance_mission_reward ?? 0;
-    const packageData = await prisma.$transaction(async (tx) => {
+                            ? "gold"
+                            : task.alliance_mission_task_target === 5 &&
+                                task.alliance_mission_task_type === "BADGE"
+                                ? "platinum"
+                                : task.alliance_mission_task_target,
+            progress: task.alliance_mission_task_type === "BADGE" && hasRequiredRank
+                ? 1
+                : task.task_progress.reduce((acc, tp) => acc + tp.progress_count, 0),
+            is_completed: task.task_progress.every((tp) => tp.is_completed),
+        }));
+        const missionData = {
+            mission_id: missionProgress?.mission.alliance_mission_id,
+            mission_name: missionProgress?.mission.alliance_mission_name,
+            mission_order: missionProgress?.mission.alliance_mission_order,
+            reward: missionProgress?.mission.alliance_mission_reward,
+            tasks: formattedTask,
+            isMissionCompleted: false,
+        };
+        const lastCompletedMission = await tx.alliance_mission_progress_table.findFirst({
+            where: { alliance_member_id: allianceMemberId, is_completed: true },
+            orderBy: { alliance_mission_progress_created: "desc" },
+            include: { mission: true },
+        });
+        const packageRewardAmount = lastCompletedMission?.mission.alliance_mission_reward ?? 0;
         const findPeakPackage = await tx.package_table.findFirst({
             where: { package_name: "PEAK" },
         });
@@ -495,7 +495,13 @@ export const postMission = async (params) => {
                 transaction_date: new Date(),
             },
         });
-        return { ...packageReward, package_color: findPeakPackage.package_image };
+        return {
+            packageData: {
+                ...packageReward,
+                package_color: findPeakPackage.package_image,
+            },
+            missionData,
+        };
     });
-    return { missionData, packageData };
+    return packageData;
 };

@@ -315,6 +315,7 @@ export const depositListPostModel = async (
       PENDING: { data: [], count: BigInt(0) },
     },
     totalCount: BigInt(0),
+    totalPendingDeposit: 0,
   };
 
   const offset = (page - 1) * limit;
@@ -484,6 +485,18 @@ OFFSET ${Prisma.raw(offset.toString())}
     returnData.merchantBalance = merchant?.merchant_member_balance;
   }
 
+  const totalPendingDeposit = await prisma.alliance_top_up_request_table.aggregate({
+    _sum: {
+      alliance_top_up_request_amount: true,
+    },
+    where: {
+      alliance_top_up_request_status: "PENDING",
+    },
+  });
+
+  returnData.totalPendingDeposit =
+    totalPendingDeposit._sum.alliance_top_up_request_amount || 0;
+  
   return JSON.parse(
     JSON.stringify(returnData, (key, value) =>
       typeof value === "bigint" ? value.toString() : value

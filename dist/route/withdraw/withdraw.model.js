@@ -22,15 +22,15 @@ export const withdrawModel = async (params) => {
         if (existingPackageWithdrawal) {
             throw new Error(`You have already made a ${earnings} withdrawal today. Please try again tomorrow.`);
         }
-        const amountMatch = await tx.$queryRaw `SELECT 
+        const amountMatch = await tx.$queryRaw `SELECT
    alliance_combined_earnings,
    alliance_olympus_wallet,
    alliance_olympus_earnings,
    alliance_referral_bounty
-   FROM alliance_schema.alliance_earnings_table 
-   WHERE alliance_earnings_member_id = ${teamMemberProfile.alliance_member_id}::uuid 
+   FROM alliance_schema.alliance_earnings_table
+   WHERE alliance_earnings_member_id = ${teamMemberProfile.alliance_member_id}::uuid
    FOR UPDATE`;
-        if (!amountMatch) {
+        if (!amountMatch[0]) {
             throw new Error("Invalid request.");
         }
         const { alliance_olympus_earnings, alliance_referral_bounty } = amountMatch[0];
@@ -88,7 +88,7 @@ export const withdrawModel = async (params) => {
         });
         await tx.$executeRaw(Prisma.sql `
         UPDATE alliance_schema.alliance_earnings_table
-        SET 
+        SET
           ${Prisma.raw(earningsType)} = GREATEST(0, ${Prisma.raw(earningsType)} - ${Math.trunc(Number(amount) * 100) / 100}),
           alliance_combined_earnings = GREATEST(0, alliance_combined_earnings - ${Math.trunc(Number(amount) * 100) / 100})
         WHERE alliance_earnings_member_id = ${teamMemberProfile.alliance_member_id}::uuid;
@@ -133,16 +133,16 @@ export const withdrawHistoryModel = async (params, teamMemberProfile) => {
     const dataQueryConditions = [...commonConditions];
     const dataWhereClause = Prisma.sql `${Prisma.join(dataQueryConditions, " AND ")}`;
     const withdrawals = await prisma.$queryRaw `
-      SELECT 
+      SELECT
         u.user_first_name,
         u.user_last_name,
         u.user_email,
         m.alliance_member_id,
         t.*
       FROM alliance_schema.alliance_withdrawal_request_table t
-      JOIN alliance_schema.alliance_member_table m 
+      JOIN alliance_schema.alliance_member_table m
         ON t.alliance_withdrawal_request_member_id = m.alliance_member_id
-      JOIN user_schema.user_table u 
+      JOIN user_schema.user_table u
         ON u.user_id = m.alliance_member_user_id
       WHERE ${dataWhereClause}
       ${orderBy}
@@ -150,12 +150,12 @@ export const withdrawHistoryModel = async (params, teamMemberProfile) => {
       OFFSET ${Prisma.raw(offset.toString())}
     `;
     const totalCount = await prisma.$queryRaw `
-        SELECT 
+        SELECT
           COUNT(*) AS count
         FROM alliance_schema.alliance_withdrawal_request_table t
-        JOIN alliance_schema.alliance_member_table m 
+        JOIN alliance_schema.alliance_member_table m
           ON t.alliance_withdrawal_request_member_id = m.alliance_member_id
-        JOIN user_schema.user_table u 
+        JOIN user_schema.user_table u
         ON u.user_id = m.alliance_member_user_id
       WHERE ${dataWhereClause}
     `;
@@ -238,6 +238,7 @@ export const withdrawListPostModel = async (params) => {
             PENDING: { data: [], count: BigInt(0) },
         },
         totalCount: BigInt(0),
+        totalPendingWithdrawal: 0,
     };
     const { page, limit, search, columnAccessor, userFilter, statusFilter, isAscendingSort, dateFilter, } = parameters;
     const offset = (page - 1) * limit;
@@ -276,7 +277,7 @@ export const withdrawListPostModel = async (params) => {
     const dataWhereClause = Prisma.sql `${Prisma.join(dataQueryConditions, " AND ")}`;
     const countWhereClause = Prisma.sql `${Prisma.join(commonConditions, " AND ")}`;
     const withdrawals = await prisma.$queryRaw `
-    SELECT 
+    SELECT
       u.user_id,
       u.user_first_name,
       u.user_last_name,
@@ -289,13 +290,13 @@ export const withdrawListPostModel = async (params) => {
       approver.user_profile_picture AS approver_profile_picture,
       approver.user_id AS approver_id
     FROM alliance_schema.alliance_withdrawal_request_table t
-    JOIN alliance_schema.alliance_member_table m 
+    JOIN alliance_schema.alliance_member_table m
       ON t.alliance_withdrawal_request_member_id = m.alliance_member_id
-    JOIN user_schema.user_table u 
+    JOIN user_schema.user_table u
       ON u.user_id = m.alliance_member_user_id
-    LEFT JOIN alliance_schema.alliance_member_table mt 
+    LEFT JOIN alliance_schema.alliance_member_table mt
       ON mt.alliance_member_id = t.alliance_withdrawal_request_approved_by
-    LEFT JOIN user_schema.user_table approver 
+    LEFT JOIN user_schema.user_table approver
       ON approver.user_id = mt.alliance_member_user_id
     WHERE ${dataWhereClause}
     ${orderBy}
@@ -303,17 +304,17 @@ export const withdrawListPostModel = async (params) => {
     OFFSET ${Prisma.raw(offset.toString())}
   `;
     const statusCounts = await prisma.$queryRaw `
-      SELECT 
-        t.alliance_withdrawal_request_status AS status, 
+      SELECT
+        t.alliance_withdrawal_request_status AS status,
         COUNT(*) AS count
       FROM alliance_schema.alliance_withdrawal_request_table t
-      JOIN alliance_schema.alliance_member_table m 
+      JOIN alliance_schema.alliance_member_table m
         ON t.alliance_withdrawal_request_member_id = m.alliance_member_id
-      JOIN user_schema.user_table u 
+      JOIN user_schema.user_table u
         ON u.user_id = m.alliance_member_user_id
-      LEFT JOIN alliance_schema.alliance_member_table mt 
+      LEFT JOIN alliance_schema.alliance_member_table mt
         ON mt.alliance_member_id = t.alliance_withdrawal_request_approved_by
-      LEFT JOIN user_schema.user_table approver 
+      LEFT JOIN user_schema.user_table approver
         ON approver.user_id = mt.alliance_member_user_id
       WHERE ${countWhereClause}
       GROUP BY t.alliance_withdrawal_request_status
@@ -330,6 +331,21 @@ export const withdrawListPostModel = async (params) => {
             returnData.data[status].data.push(request);
         }
     });
+    const totalPendingWithdrawal = await prisma.alliance_withdrawal_request_table.aggregate({
+        where: {
+            alliance_withdrawal_request_status: "PENDING",
+            alliance_withdrawal_request_approved_by: teamMemberProfile.alliance_member_role === "ACCOUNTING"
+                ? teamMemberProfile.alliance_member_id
+                : null,
+        },
+        _sum: {
+            alliance_withdrawal_request_amount: true,
+            alliance_withdrawal_request_fee: true,
+        },
+    });
+    returnData.totalPendingWithdrawal =
+        Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_amount?.toFixed(2)) -
+            Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_fee?.toFixed(2));
     returnData.totalCount = statusCounts.reduce((sum, item) => sum + BigInt(item.count), BigInt(0));
     return JSON.parse(JSON.stringify(returnData, (key, value) => typeof value === "bigint" ? value.toString() : value));
 };
@@ -434,25 +450,25 @@ export const withdrawHistoryReportPostTotalModel = async (params) => {
     const executeQuery = async (interval) => {
         const reportData = await prisma.$queryRaw `
       WITH approval_summary AS (
-        SELECT 
+        SELECT
           t.alliance_withdrawal_request_id,
-          CASE 
+          CASE
             WHEN mr.alliance_member_role = 'ADMIN' THEN 'ADMIN'
             WHEN mt.alliance_member_role = 'ACCOUNTING' THEN 'ACCOUNTING'
           END AS approver_role,
           t.alliance_withdrawal_request_amount - t.alliance_withdrawal_request_fee AS net_approved_amount
         FROM alliance_schema.alliance_withdrawal_request_table t
-        LEFT JOIN alliance_schema.alliance_member_table mt 
+        LEFT JOIN alliance_schema.alliance_member_table mt
           ON mt.alliance_member_id = t.alliance_withdrawal_request_approved_by
           AND mt.alliance_member_role = 'ACCOUNTING'
-        LEFT JOIN alliance_schema.alliance_member_table mr 
+        LEFT JOIN alliance_schema.alliance_member_table mr
           ON mr.alliance_member_id = t.alliance_withdrawal_request_approved_by
           AND mr.alliance_member_role = 'ADMIN'
         WHERE t.alliance_withdrawal_request_date_updated::timestamptz BETWEEN ${interval.start}::timestamptz AND ${interval.end}::timestamptz
           AND t.alliance_withdrawal_request_status = 'APPROVED'
       ),
       role_aggregates AS (
-        SELECT 
+        SELECT
           approver_role,
           COUNT(*) AS total_approvals,
           SUM(net_approved_amount) AS total_approved_amount
@@ -460,7 +476,7 @@ export const withdrawHistoryReportPostTotalModel = async (params) => {
         GROUP BY approver_role
       )
 
-      SELECT 
+      SELECT
         ${interval.start} AS interval_start,
         ${interval.end} AS interval_end,
         COALESCE((SELECT total_approvals FROM role_aggregates WHERE approver_role = 'ACCOUNTING'), 0) AS total_accounting_approvals,
