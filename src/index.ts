@@ -18,7 +18,7 @@ app.use(
         : [
             "https://elevateglobal.app",
             "https://website.elevateglobal.app",
-            "https://front.elevateglobal.com",
+            "https://front.elevateglobal.app",
           ],
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
