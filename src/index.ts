@@ -15,7 +15,11 @@ app.use(
     origin:
       process.env.NODE_ENV === "development"
         ? ["http://localhost:3000"]
-        : ["https://elevateglobal.app"],
+        : [
+            "https://elevateglobal.app",
+            "https://website.elevateglobal.app",
+            "https://front.elevateglobal.com",
+          ],
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
