@@ -56,21 +56,24 @@ export const withdrawModel = async (params) => {
         }
         const finalAmount = calculateFinalAmount(Number(amount), earnings);
         const fee = calculateFee(Number(amount), earnings);
-        const countAllRequests = await tx.$queryRaw `
-      SELECT am.alliance_member_id AS "approverId",
-             COALESCE(approvedRequests."requestCount", 0) AS "requestCount"
-      FROM alliance_schema.alliance_member_table am
-      LEFT JOIN (
-        SELECT awr.alliance_withdrawal_request_approved_by AS "approverId",
-               COUNT(awr.alliance_withdrawal_request_id) AS "requestCount"
-        FROM alliance_schema.alliance_withdrawal_request_table awr
-        WHERE awr.alliance_withdrawal_request_date::timestamptz BETWEEN ${startDate}::timestamptz AND ${endDate}::timestamptz
-        GROUP BY awr.alliance_withdrawal_request_approved_by
-      ) approvedRequests ON am.alliance_member_id = approvedRequests."approverId"
-      WHERE am.alliance_member_role = 'ACCOUNTING'
-      ORDER BY "requestCount" ASC
-      LIMIT 1;
-    `;
+        // const countAllRequests: {
+        //   approverId: string;
+        //   requestCount: bigint;
+        // }[] = await tx.$queryRaw`
+        //   SELECT am.alliance_member_id AS "approverId",
+        //          COALESCE(approvedRequests."requestCount", 0) AS "requestCount"
+        //   FROM alliance_schema.alliance_member_table am
+        //   LEFT JOIN (
+        //     SELECT awr.alliance_withdrawal_request_approved_by AS "approverId",
+        //            COUNT(awr.alliance_withdrawal_request_id) AS "requestCount"
+        //     FROM alliance_schema.alliance_withdrawal_request_table awr
+        //     WHERE awr.alliance_withdrawal_request_date::timestamptz BETWEEN ${startDate}::timestamptz AND ${endDate}::timestamptz
+        //     GROUP BY awr.alliance_withdrawal_request_approved_by
+        //   ) approvedRequests ON am.alliance_member_id = approvedRequests."approverId"
+        //   WHERE am.alliance_member_role = 'ACCOUNTING'
+        //   ORDER BY "requestCount" ASC
+        //   LIMIT 1;
+        // `;
         await tx.alliance_withdrawal_request_table.create({
             data: {
                 alliance_withdrawal_request_amount: Number(amount),
@@ -83,7 +86,7 @@ export const withdrawModel = async (params) => {
                 [earningsWithdrawalType]: finalAmount,
                 alliance_withdrawal_request_member_id: teamMemberProfile.alliance_member_id,
                 alliance_withdrawal_request_withdraw_type: earnings,
-                alliance_withdrawal_request_approved_by: countAllRequests[0]?.approverId ?? null,
+                alliance_withdrawal_request_approved_by: "ca184deb-4a5d-4e21-a75c-2015ea8635f7",
             },
         });
         await tx.$executeRaw(Prisma.sql `
@@ -334,9 +337,9 @@ export const withdrawListPostModel = async (params) => {
     const totalPendingWithdrawal = await prisma.alliance_withdrawal_request_table.aggregate({
         where: {
             alliance_withdrawal_request_status: "PENDING",
-            alliance_withdrawal_request_approved_by: teamMemberProfile.alliance_member_role === "ACCOUNTING"
-                ? teamMemberProfile.alliance_member_id
-                : null,
+            ...(teamMemberProfile.alliance_member_role === "ACCOUNTING" && {
+                alliance_withdrawal_request_approved_by: teamMemberProfile.alliance_member_id,
+            }),
         },
         _sum: {
             alliance_withdrawal_request_amount: true,
@@ -344,8 +347,8 @@ export const withdrawListPostModel = async (params) => {
         },
     });
     returnData.totalPendingWithdrawal =
-        Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_amount?.toFixed(2)) -
-            Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_fee?.toFixed(2));
+        Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_amount) -
+            Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_fee);
     returnData.totalCount = statusCounts.reduce((sum, item) => sum + BigInt(item.count), BigInt(0));
     return JSON.parse(JSON.stringify(returnData, (key, value) => typeof value === "bigint" ? value.toString() : value));
 };
