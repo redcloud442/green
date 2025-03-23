@@ -35,9 +35,13 @@ export const merchantPostController = async (c: Context) => {
   try {
     const { accountNumber, accountType, accountName } = await c.req.json();
 
-    await merchantPostModel({ accountNumber, accountType, accountName });
+    const data = await merchantPostModel({
+      accountNumber,
+      accountType,
+      accountName,
+    });
 
-    return c.json({ message: "Merchant Created" });
+    return c.json({ message: "Merchant Created", data }, 200);
   } catch (error) {
     return sendErrorResponse("Internal Server Error", 500);
   }

@@ -9,7 +9,11 @@ const app = new Hono();
 app.use("*", supabaseMiddleware(), cors({
     origin: process.env.NODE_ENV === "development"
         ? ["http://localhost:3000"]
-        : ["https://elevateglobal.app"],
+        : [
+            "https://elevateglobal.app",
+            "https://website.elevateglobal.app",
+            "https://front.elevateglobal.app",
+        ],
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],

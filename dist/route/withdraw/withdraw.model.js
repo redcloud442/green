@@ -334,9 +334,9 @@ export const withdrawListPostModel = async (params) => {
     const totalPendingWithdrawal = await prisma.alliance_withdrawal_request_table.aggregate({
         where: {
             alliance_withdrawal_request_status: "PENDING",
-            alliance_withdrawal_request_approved_by: teamMemberProfile.alliance_member_role === "ACCOUNTING"
-                ? teamMemberProfile.alliance_member_id
-                : null,
+            ...(teamMemberProfile.alliance_member_role === "ACCOUNTING" && {
+                alliance_withdrawal_request_approved_by: teamMemberProfile.alliance_member_id,
+            }),
         },
         _sum: {
             alliance_withdrawal_request_amount: true,
@@ -344,8 +344,8 @@ export const withdrawListPostModel = async (params) => {
         },
     });
     returnData.totalPendingWithdrawal =
-        Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_amount?.toFixed(2)) -
-            Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_fee?.toFixed(2));
+        Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_amount) -
+            Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_fee);
     returnData.totalCount = statusCounts.reduce((sum, item) => sum + BigInt(item.count), BigInt(0));
     return JSON.parse(JSON.stringify(returnData, (key, value) => typeof value === "bigint" ? value.toString() : value));
 };
