@@ -4,6 +4,11 @@ import prisma from "../../utils/prisma.js";
 import { redis } from "../../utils/redis.js";
 export const referralDirectModelPost = async (params) => {
     const { page, limit, search, columnAccessor, isAscendingSort, teamMemberProfile, dateFilter, } = params;
+    const returnData = {
+        data: [],
+        totalCount: 0,
+        totalAmount: 0,
+    };
     const cacheKey = `referral-direct-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}-${dateFilter?.start}-${dateFilter?.end}`;
     const cachedData = await redis.get(cacheKey);
     if (cachedData) {
@@ -57,15 +62,34 @@ export const referralDirectModelPost = async (params) => {
         GROUP BY u.user_first_name, u.user_last_name, u.user_username, pa.package_ally_bounty_log_date_created
     ) AS subquery;
 `;
-    const returnData = {
-        data: direct,
-        totalCount: Number(totalCount[0]?.count || 0),
-    };
+    if (startDate && endDate) {
+        const totalCount = await prisma.package_ally_bounty_log.aggregate({
+            where: {
+                package_ally_bounty_member_id: teamMemberProfile.alliance_member_id,
+                package_ally_bounty_type: "DIRECT",
+                package_ally_bounty_log_date_created: {
+                    gte: startDate,
+                    lte: endDate,
+                },
+            },
+            _sum: {
+                package_ally_bounty_earnings: true,
+            },
+        });
+        returnData.totalAmount = Number(totalCount._sum.package_ally_bounty_earnings || 0);
+    }
+    returnData.data = direct;
+    returnData.totalCount = Number(totalCount[0]?.count || 0);
     await redis.set(cacheKey, JSON.stringify(returnData), { ex: 300 });
     return returnData;
 };
 export const referralIndirectModelPost = async (params) => {
     const { page, limit, search, columnAccessor, isAscendingSort, teamMemberProfile, dateFilter, } = params;
+    const returnData = {
+        data: [],
+        totalCount: 0,
+        totalAmount: 0,
+    };
     const cacheKey = `referral-indirect-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}-${dateFilter?.start}-${dateFilter?.end}`;
     const cachedData = await redis.get(cacheKey);
     if (cachedData) {
@@ -177,10 +201,25 @@ export const referralIndirectModelPost = async (params) => {
       pa.package_ally_bounty_log_date_created
   ) AS subquery
 `;
-    const returnData = {
-        data: indirectReferralDetails,
-        totalCount: Number(totalCountResult[0]?.count || 0),
-    };
+    if (startDate && endDate) {
+        const totalCount = await prisma.package_ally_bounty_log.aggregate({
+            where: {
+                package_ally_bounty_member_id: teamMemberProfile.alliance_member_id,
+                package_ally_bounty_type: "INDIRECT",
+                package_ally_bounty_log_date_created: {
+                    gte: startDate,
+                    lte: endDate,
+                },
+            },
+            _sum: {
+                package_ally_bounty_earnings: true,
+            },
+            _count: true,
+        });
+        returnData.totalAmount = Number(totalCount._sum.package_ally_bounty_earnings || 0);
+    }
+    returnData.data = indirectReferralDetails;
+    returnData.totalCount = Number(totalCountResult[0]?.count || 0);
     await redis.set(cacheKey, returnData, { ex: 300 });
     return returnData;
 };
