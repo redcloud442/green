@@ -35,10 +35,12 @@ export const referralDirectModelPost = async (params: {
     }[];
     totalCount: number;
     totalAmount: number;
+    totalCountByDate: number;
   } = {
     data: [],
     totalCount: 0,
     totalAmount: 0,
+    totalCountByDate: 0,
   };
 
   const cacheKey = `referral-direct-${teamMemberProfile.alliance_member_id}-${page}-${limit}-${search}-${columnAccessor}-${isAscendingSort}-${dateFilter?.start}-${dateFilter?.end}`;
@@ -104,23 +106,26 @@ export const referralDirectModelPost = async (params: {
 `;
 
   if (startDate && endDate) {
-    const totalCount = await prisma.package_ally_bounty_log.aggregate({
-      where: {
-        package_ally_bounty_member_id: teamMemberProfile.alliance_member_id,
-        package_ally_bounty_type: "DIRECT",
-        package_ally_bounty_log_date_created: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      _sum: {
-        package_ally_bounty_earnings: true,
-      },
-    });
-
-    returnData.totalAmount = Number(
-      totalCount._sum.package_ally_bounty_earnings || 0
+    const result: {
+      total_count: number;
+      total_amount: number;
+    }[] = await prisma.$queryRawUnsafe(
+      `
+    SELECT
+      COUNT(DISTINCT package_ally_bounty_from) AS total_count,
+      SUM(DISTINCT package_ally_bounty_earnings) AS total_amount
+    FROM packages_schema.package_ally_bounty_log
+    WHERE package_ally_bounty_member_id = $1::uuid
+      AND package_ally_bounty_type = 'DIRECT'
+      AND package_ally_bounty_log_date_created BETWEEN $2::timestamptz AND $3::timestamptz
+  `,
+      teamMemberProfile.alliance_member_id,
+      startDate,
+      endDate
     );
+
+    returnData.totalAmount = Number(result[0]?.total_amount || 0);
+    returnData.totalCountByDate = Number(result[0]?.total_count || 0);
   }
 
   returnData.data = direct as {
