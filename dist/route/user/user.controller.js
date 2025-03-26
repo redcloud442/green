@@ -39,6 +39,7 @@ export const userPatchController = async (c) => {
         return c.json({ message: "User Updated" });
     }
     catch (error) {
+        console.log(error);
         return c.json({ error: "Internal Server Error" }, { status: 500 });
     }
 };
