@@ -8,16 +8,25 @@ export const protectionMemberUser = async (
   try {
     const user = await prisma.user_table.findUnique({
       where: { user_id: userId },
-      include: {
-        alliance_member_table: true,
+      select: {
+        user_id: true,
+
+        alliance_member_table: {
+          select: {
+            alliance_member_id: true,
+            alliance_member_role: true,
+            alliance_member_restricted: true,
+            alliance_member_is_active: true,
+          },
+        },
       },
     });
+
     if (!user) {
       return sendErrorResponse("Internal Server Error", 500);
     }
 
     if (
-      !user?.alliance_member_table[0]?.alliance_member_alliance_id ||
       !["MEMBER", "MERCHANT", "ACCOUNTING", "ADMIN", "CLIENT"].includes(
         user.alliance_member_table[0].alliance_member_role
       )
@@ -45,8 +54,17 @@ export const protectionMerchantAdmin = async (
   try {
     const user = await prisma.user_table.findUnique({
       where: { user_id: userId },
-      include: {
-        alliance_member_table: true,
+      select: {
+        user_id: true,
+
+        alliance_member_table: {
+          select: {
+            alliance_member_id: true,
+            alliance_member_role: true,
+            alliance_member_restricted: true,
+            alliance_member_is_active: true,
+          },
+        },
       },
     });
 
@@ -55,7 +73,6 @@ export const protectionMerchantAdmin = async (
     }
 
     if (
-      !user?.alliance_member_table[0]?.alliance_member_alliance_id ||
       !["MERCHANT", "ADMIN"].includes(
         user.alliance_member_table[0].alliance_member_role
       )
@@ -82,8 +99,17 @@ export const protectionAccountingAdmin = async (
   try {
     const user = await prisma.user_table.findUnique({
       where: { user_id: userId },
-      include: {
-        alliance_member_table: true,
+      select: {
+        user_id: true,
+
+        alliance_member_table: {
+          select: {
+            alliance_member_id: true,
+            alliance_member_role: true,
+            alliance_member_restricted: true,
+            alliance_member_is_active: true,
+          },
+        },
       },
     });
 
@@ -92,7 +118,6 @@ export const protectionAccountingAdmin = async (
     }
 
     if (
-      !user?.alliance_member_table[0]?.alliance_member_alliance_id ||
       !["ACCOUNTING", "ADMIN"].includes(
         user.alliance_member_table[0].alliance_member_role
       )
@@ -116,8 +141,17 @@ export const protectionAdmin = async (userId: string, prisma: PrismaClient) => {
   try {
     const user = await prisma.user_table.findUnique({
       where: { user_id: userId },
-      include: {
-        alliance_member_table: true,
+      select: {
+        user_id: true,
+
+        alliance_member_table: {
+          select: {
+            alliance_member_id: true,
+            alliance_member_role: true,
+            alliance_member_restricted: true,
+            alliance_member_is_active: true,
+          },
+        },
       },
     });
 
@@ -126,7 +160,6 @@ export const protectionAdmin = async (userId: string, prisma: PrismaClient) => {
     }
 
     if (
-      !user?.alliance_member_table[0]?.alliance_member_alliance_id ||
       !["ADMIN"].includes(user.alliance_member_table[0].alliance_member_role)
     ) {
       return sendErrorResponse("Invalid Referral Link", 400);
@@ -151,8 +184,16 @@ export const protectionClient = async (
   try {
     const user = await prisma.user_table.findUnique({
       where: { user_id: userId },
-      include: {
-        alliance_member_table: true,
+      select: {
+        user_id: true,
+        alliance_member_table: {
+          select: {
+            alliance_member_id: true,
+            alliance_member_role: true,
+            alliance_member_restricted: true,
+            alliance_member_is_active: true,
+          },
+        },
       },
     });
 
@@ -161,7 +202,6 @@ export const protectionClient = async (
     }
 
     if (
-      !user?.alliance_member_table[0]?.alliance_member_alliance_id ||
       !["CLIENT"].includes(user.alliance_member_table[0].alliance_member_role)
     ) {
       return sendErrorResponse("Invalid Referral Link", 400);
