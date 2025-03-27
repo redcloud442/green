@@ -337,7 +337,7 @@ export const dashboardPostSchema = z.object({
 });
 //leaderboard schema
 export const leaderboardPostSchema = z.object({
-    leaderBoardType: z.enum(["DIRECT", "INDIRECT"]),
+    leaderBoardType: z.enum(["DIRECT", "INDIRECT", "PACKAGE"]),
     limit: z.number().min(1).max(10),
     page: z.number().min(1),
 });

@@ -3,15 +3,22 @@ export const protectionMemberUser = async (userId, prisma) => {
     try {
         const user = await prisma.user_table.findUnique({
             where: { user_id: userId },
-            include: {
-                alliance_member_table: true,
+            select: {
+                user_id: true,
+                alliance_member_table: {
+                    select: {
+                        alliance_member_id: true,
+                        alliance_member_role: true,
+                        alliance_member_restricted: true,
+                        alliance_member_is_active: true,
+                    },
+                },
             },
         });
         if (!user) {
             return sendErrorResponse("Internal Server Error", 500);
         }
-        if (!user?.alliance_member_table[0]?.alliance_member_alliance_id ||
-            !["MEMBER", "MERCHANT", "ACCOUNTING", "ADMIN", "CLIENT"].includes(user.alliance_member_table[0].alliance_member_role)) {
+        if (!["MEMBER", "MERCHANT", "ACCOUNTING", "ADMIN", "CLIENT"].includes(user.alliance_member_table[0].alliance_member_role)) {
             return sendErrorResponse("Invalid Referral Link", 400);
         }
         if (user.alliance_member_table[0].alliance_member_restricted) {
@@ -30,15 +37,23 @@ export const protectionMerchantAdmin = async (userId, prisma) => {
     try {
         const user = await prisma.user_table.findUnique({
             where: { user_id: userId },
-            include: {
-                alliance_member_table: true,
+            select: {
+                user_id: true,
+                alliance_member_table: {
+                    select: {
+                        alliance_member_id: true,
+                        alliance_member_role: true,
+                        alliance_member_restricted: true,
+                        alliance_member_is_active: true,
+                        alliance_member_alliance_id: true,
+                    },
+                },
             },
         });
         if (!user) {
             return sendErrorResponse("Internal Server Error", 500);
         }
-        if (!user?.alliance_member_table[0]?.alliance_member_alliance_id ||
-            !["MERCHANT", "ADMIN"].includes(user.alliance_member_table[0].alliance_member_role)) {
+        if (!["MERCHANT", "ADMIN"].includes(user.alliance_member_table[0].alliance_member_role)) {
             return sendErrorResponse("Invalid Referral Link", 400);
         }
         if (user.alliance_member_table[0].alliance_member_restricted) {
@@ -56,15 +71,23 @@ export const protectionAccountingAdmin = async (userId, prisma) => {
     try {
         const user = await prisma.user_table.findUnique({
             where: { user_id: userId },
-            include: {
-                alliance_member_table: true,
+            select: {
+                user_id: true,
+                alliance_member_table: {
+                    select: {
+                        alliance_member_id: true,
+                        alliance_member_role: true,
+                        alliance_member_restricted: true,
+                        alliance_member_is_active: true,
+                        alliance_member_alliance_id: true,
+                    },
+                },
             },
         });
         if (!user) {
             return sendErrorResponse("Internal Server Error", 500);
         }
-        if (!user?.alliance_member_table[0]?.alliance_member_alliance_id ||
-            !["ACCOUNTING", "ADMIN"].includes(user.alliance_member_table[0].alliance_member_role)) {
+        if (!["ACCOUNTING", "ADMIN"].includes(user.alliance_member_table[0].alliance_member_role)) {
             return sendErrorResponse("Invalid Referral Link", 400);
         }
         if (user.alliance_member_table[0].alliance_member_restricted) {
@@ -82,15 +105,23 @@ export const protectionAdmin = async (userId, prisma) => {
     try {
         const user = await prisma.user_table.findUnique({
             where: { user_id: userId },
-            include: {
-                alliance_member_table: true,
+            select: {
+                user_id: true,
+                alliance_member_table: {
+                    select: {
+                        alliance_member_id: true,
+                        alliance_member_role: true,
+                        alliance_member_restricted: true,
+                        alliance_member_is_active: true,
+                        alliance_member_alliance_id: true,
+                    },
+                },
             },
         });
         if (!user) {
             return sendErrorResponse("Internal Server Error", 500);
         }
-        if (!user?.alliance_member_table[0]?.alliance_member_alliance_id ||
-            !["ADMIN"].includes(user.alliance_member_table[0].alliance_member_role)) {
+        if (!["ADMIN"].includes(user.alliance_member_table[0].alliance_member_role)) {
             return sendErrorResponse("Invalid Referral Link", 400);
         }
         if (user.alliance_member_table[0].alliance_member_restricted) {
@@ -108,15 +139,22 @@ export const protectionClient = async (userId, prisma) => {
     try {
         const user = await prisma.user_table.findUnique({
             where: { user_id: userId },
-            include: {
-                alliance_member_table: true,
+            select: {
+                user_id: true,
+                alliance_member_table: {
+                    select: {
+                        alliance_member_id: true,
+                        alliance_member_role: true,
+                        alliance_member_restricted: true,
+                        alliance_member_is_active: true,
+                    },
+                },
             },
         });
         if (!user) {
             return sendErrorResponse("Internal Server Error", 500);
         }
-        if (!user?.alliance_member_table[0]?.alliance_member_alliance_id ||
-            !["CLIENT"].includes(user.alliance_member_table[0].alliance_member_role)) {
+        if (!["CLIENT"].includes(user.alliance_member_table[0].alliance_member_role)) {
             return sendErrorResponse("Invalid Referral Link", 400);
         }
         if (user.alliance_member_table[0].alliance_member_restricted) {
