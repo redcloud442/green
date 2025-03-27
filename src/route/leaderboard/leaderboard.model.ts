@@ -62,10 +62,7 @@ export const leaderboardPostModel = async (params: {
       data: leaderboardWithUserDetails,
     };
   } else if (leaderBoardType === "PACKAGE") {
-    const packageTotalCount = await prisma.dashboard_earnings_summary.count({
-      take: limit,
-      skip: offset,
-    });
+    const packageTotalCount = await prisma.dashboard_earnings_summary.count();
 
     const packageData = await prisma.$queryRaw<
       {
