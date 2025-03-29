@@ -705,6 +705,8 @@ function deductFromWallets(
     }
   }
 
+  remaining = Math.round(remaining * 1000000) / 1000000;
+
   // If any balance remains, throw an error
   if (remaining > 0) {
     throw new Error("Insufficient funds to complete the transaction.");
