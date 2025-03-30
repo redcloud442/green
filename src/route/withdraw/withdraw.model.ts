@@ -215,9 +215,7 @@ export const withdrawHistoryModel = async (
     : Prisma.empty;
 
   const commonConditions: Prisma.Sql[] = [
-    Prisma.raw(
-      `m.alliance_member_alliance_id = '${teamMemberProfile.alliance_member_alliance_id}'::uuid AND m.alliance_member_user_id = '${userId}'::uuid`
-    ),
+    Prisma.raw(`m.alliance_member_user_id = '${userId}'::uuid`),
   ];
 
   if (search) {
@@ -558,7 +556,6 @@ export const withdrawListPostModel = async (params: {
         alliance_withdrawal_request_fee: true,
       },
     });
-
 
   returnData.totalPendingWithdrawal =
     Number(totalPendingWithdrawal._sum.alliance_withdrawal_request_amount) -

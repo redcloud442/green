@@ -10,6 +10,7 @@ app.use("*", supabaseMiddleware(), cors({
     origin: process.env.NODE_ENV === "development"
         ? ["http://localhost:3000"]
         : [
+            "https://paldistribution.live",
             "https://elevateglobal.app",
             "https://website.elevateglobal.app",
             "https://front.elevateglobal.app",

@@ -41,10 +41,7 @@ export const leaderboardPostModel = async (params) => {
         };
     }
     else if (leaderBoardType === "PACKAGE") {
-        const packageTotalCount = await prisma.dashboard_earnings_summary.count({
-            take: limit,
-            skip: offset,
-        });
+        const packageTotalCount = await prisma.dashboard_earnings_summary.count();
         const packageData = await prisma.$queryRaw `
   SELECT
   member_id as member_id,
