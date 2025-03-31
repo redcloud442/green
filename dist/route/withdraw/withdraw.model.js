@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { calculateFee, calculateFinalAmount, getPhilippinesTime, } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
+import { redis } from "../../utils/redis.js";
 export const withdrawModel = async (params) => {
     const { earnings, accountNumber, accountName, amount, bank, teamMemberProfile, } = params;
     await prisma.$transaction(async (tx) => {
@@ -120,7 +121,7 @@ export const withdrawHistoryModel = async (params, teamMemberProfile) => {
         ? Prisma.sql `ORDER BY ${Prisma.raw(columnAccessor)} ${Prisma.raw(sortBy)}`
         : Prisma.empty;
     const commonConditions = [
-        Prisma.raw(`m.alliance_member_alliance_id = '${teamMemberProfile.alliance_member_alliance_id}'::uuid AND m.alliance_member_user_id = '${userId}'::uuid`),
+        Prisma.raw(`m.alliance_member_user_id = '${userId}'::uuid`),
     ];
     if (search) {
         commonConditions.push(Prisma.raw(`(
@@ -182,7 +183,8 @@ export const updateWithdrawModel = async (params) => {
             where: { alliance_withdrawal_request_id: requestId },
             data: {
                 alliance_withdrawal_request_status: status,
-                alliance_withdrawal_request_approved_by: teamMemberProfile.alliance_member_role === "ADMIN"
+                alliance_withdrawal_request_approved_by: teamMemberProfile.alliance_member_role === "ADMIN" ||
+                    teamMemberProfile.alliance_member_role === "ACCOUNTING_HEAD"
                     ? teamMemberProfile.alliance_member_id
                     : undefined,
                 alliance_withdrawal_request_reject_note: note ?? null,
@@ -506,4 +508,46 @@ export const withdrawHistoryReportPostTotalModel = async (params) => {
         end: new Date(interval.end),
     })));
     return JSON.parse(JSON.stringify(aggregatedResults, (key, value) => typeof value === "bigint" ? value.toString() : value));
+};
+export const withdrawBanListPostModel = async (params) => {
+    const { accountNumber } = params;
+    const key = `withdraw-ban-list`;
+    const existingList = await redis.lrange(key, 0, -1);
+    const normalizedAccountNumber = String(accountNumber).trim();
+    const isDuplicate = existingList.some((entry) => String(entry).trim() === normalizedAccountNumber);
+    if (isDuplicate) {
+        throw new Error("Account number already exists in the ban list");
+    }
+    await redis.rpush(key, normalizedAccountNumber);
+    return {
+        message: "Account number added to the ban list",
+    };
+};
+export const withdrawBanListGetModel = async (params) => {
+    const { take, skip } = params;
+    const key = `withdraw-ban-list`;
+    const newSkip = skip - 1;
+    const totalCount = await redis.llen(key);
+    if (newSkip >= totalCount) {
+        return {
+            data: [],
+            totalCount,
+        };
+    }
+    const accountNumbers = await redis.lrange(key, 0, 10);
+    const formattedAccountNumbers = accountNumbers.map((number) => ({
+        accountNumber: number,
+    }));
+    return {
+        data: formattedAccountNumbers,
+        totalCount,
+    };
+};
+export const withdrawBanListDeleteModel = async (params) => {
+    const { accountNumber } = params;
+    const key = `withdraw-ban-list`;
+    await redis.lrem(key, 0, String(accountNumber));
+    return {
+        message: "Account number removed from the ban list",
+    };
 };

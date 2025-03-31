@@ -110,7 +110,14 @@ export const userSchemaPatch = z.object({
     memberId: z.string().uuid(),
     action: z.enum(["updateRole", "banUser"]),
     role: z
-        .enum(["ADMIN", "MEMBER", "MERCHANT", "ACCOUNTING", "CLIENT"])
+        .enum([
+        "ADMIN",
+        "MEMBER",
+        "MERCHANT",
+        "ACCOUNTING",
+        "CLIENT",
+        "ACCOUNTING_HEAD",
+    ])
         .optional(),
     type: z.enum(["BAN", "UNBAN"]).optional(),
 });
@@ -325,6 +332,13 @@ export const withdrawTotalReportPostSchema = z.object({
     type: z.enum(["DAILY", "WEEKLY", "MONTHLY"]),
     take: z.number().optional(),
     skip: z.number().optional(),
+});
+export const withdrawBanListPostSchema = z.object({
+    accountNumber: z.string().min(6),
+});
+export const withdrawBanListGetSchema = z.object({
+    take: z.coerce.number().min(0),
+    skip: z.coerce.number().min(0),
 });
 //dashboard schema
 export const dashboardPostSchema = z.object({

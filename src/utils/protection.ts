@@ -27,9 +27,14 @@ export const protectionMemberUser = async (
     }
 
     if (
-      !["MEMBER", "MERCHANT", "ACCOUNTING", "ADMIN", "CLIENT"].includes(
-        user.alliance_member_table[0].alliance_member_role
-      )
+      ![
+        "MEMBER",
+        "MERCHANT",
+        "ACCOUNTING",
+        "ADMIN",
+        "CLIENT",
+        "ACCOUNTING_HEAD",
+      ].includes(user.alliance_member_table[0].alliance_member_role)
     ) {
       return sendErrorResponse("Invalid Referral Link", 400);
     }
@@ -120,7 +125,7 @@ export const protectionAccountingAdmin = async (
     }
 
     if (
-      !["ACCOUNTING", "ADMIN"].includes(
+      !["ACCOUNTING", "ACCOUNTING_HEAD", "ADMIN"].includes(
         user.alliance_member_table[0].alliance_member_role
       )
     ) {

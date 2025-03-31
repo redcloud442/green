@@ -10,6 +10,7 @@ import type {
 } from "../../utils/types.js";
 
 import prisma from "../../utils/prisma.js";
+import { redis } from "../../utils/redis.js";
 
 export const withdrawModel = async (params: {
   earnings: string;
@@ -305,7 +306,8 @@ export const updateWithdrawModel = async (params: {
       data: {
         alliance_withdrawal_request_status: status,
         alliance_withdrawal_request_approved_by:
-          teamMemberProfile.alliance_member_role === "ADMIN"
+          teamMemberProfile.alliance_member_role === "ADMIN" ||
+          teamMemberProfile.alliance_member_role === "ACCOUNTING_HEAD"
             ? teamMemberProfile.alliance_member_id
             : undefined,
         alliance_withdrawal_request_reject_note: note ?? null,
@@ -435,13 +437,15 @@ export const withdrawListPostModel = async (params: {
   }
 
   if (dateFilter?.start && dateFilter?.end) {
-    const startDate =
-      new Date(dateFilter.start || new Date()).toISOString().split("T")[0] +
-      " 00:00:00.000";
+    const startDate = getPhilippinesTime(
+      new Date(dateFilter.start || new Date()),
+      "start"
+    );
 
-    const endDate =
-      new Date(dateFilter.end || new Date()).toISOString().split("T")[0] +
-      " 23:59:59.999";
+    const endDate = getPhilippinesTime(
+      new Date(dateFilter.end || new Date()),
+      "end"
+    );
 
     commonConditions.push(
       Prisma.raw(
@@ -782,4 +786,72 @@ export const withdrawHistoryReportPostTotalModel = async (params: {
       typeof value === "bigint" ? value.toString() : value
     )
   );
+};
+
+export const withdrawBanListPostModel = async (params: {
+  accountNumber: string;
+}) => {
+  const { accountNumber } = params;
+  const key = `withdraw-ban-list`;
+
+  const existingList = await redis.lrange(key, 0, -1);
+
+  const normalizedAccountNumber = String(accountNumber).trim();
+
+  const isDuplicate = existingList.some(
+    (entry) => String(entry).trim() === normalizedAccountNumber
+  );
+
+  if (isDuplicate) {
+    throw new Error("Account number already exists in the ban list");
+  }
+
+  await redis.rpush(key, normalizedAccountNumber);
+
+  return {
+    message: "Account number added to the ban list",
+  };
+};
+
+export const withdrawBanListGetModel = async (params: {
+  take: number;
+  skip: number;
+}) => {
+  const { take, skip } = params;
+  const key = `withdraw-ban-list`;
+
+  const newSkip = skip - 1;
+
+  const totalCount = await redis.llen(key);
+
+  if (newSkip >= totalCount) {
+    return {
+      data: [],
+      totalCount,
+    };
+  }
+
+  const accountNumbers = await redis.lrange(key, 0, 10);
+
+  const formattedAccountNumbers = accountNumbers.map((number) => ({
+    accountNumber: number,
+  }));
+
+  return {
+    data: formattedAccountNumbers,
+    totalCount,
+  };
+};
+
+export const withdrawBanListDeleteModel = async (params: {
+  accountNumber: string;
+}) => {
+  const { accountNumber } = params;
+  const key = `withdraw-ban-list`;
+
+  await redis.lrem(key, 0, String(accountNumber));
+
+  return {
+    message: "Account number removed from the ban list",
+  };
 };

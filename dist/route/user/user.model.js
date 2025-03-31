@@ -231,7 +231,7 @@ export const userPatchModel = async (params) => {
                 alliance_member_role: role,
                 alliance_member_date_updated: new Date(),
                 alliance_member_is_active: role &&
-                    ["ADMIN", "MERCHANT", "ACCOUNTING"].some((r) => role.includes(r))
+                    ["ADMIN", "MERCHANT", "ACCOUNTING", "ACCOUNTING_HEAD"].some((r) => role.includes(r))
                     ? true
                     : undefined, // Stay as is if no role is included
             },

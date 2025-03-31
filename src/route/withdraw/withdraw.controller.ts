@@ -2,6 +2,9 @@ import type { Context } from "hono";
 import { sendErrorResponse } from "../../utils/function.js";
 import {
   updateWithdrawModel,
+  withdrawBanListDeleteModel,
+  withdrawBanListGetModel,
+  withdrawBanListPostModel,
   withdrawGetModel,
   withdrawHistoryModel,
   withdrawHistoryReportPostModel,
@@ -76,7 +79,6 @@ export const withdrawListPostController = async (c: Context) => {
 
     return c.json(data, 200);
   } catch (e) {
-    console.log(e);
     return sendErrorResponse("Internal Server Error", 500);
   }
 };
@@ -110,6 +112,47 @@ export const withdrawTotalReportPostController = async (c: Context) => {
     const params = c.get("params");
 
     const data = await withdrawHistoryReportPostTotalModel(params);
+
+    return c.json(data, 200);
+  } catch (e) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const withdrawBanListPostController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    const data = await withdrawBanListPostModel({
+      accountNumber: params.accountNumber,
+    });
+
+    return c.json(data, 200);
+  } catch (e) {
+    if (e instanceof Error) {
+      return sendErrorResponse(e.message, 400);
+    }
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const withdrawBanListGetController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    const data = await withdrawBanListGetModel(params);
+
+    return c.json(data, 200);
+  } catch (e) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const withdrawBanListDeleteController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    const data = await withdrawBanListDeleteModel(params);
 
     return c.json(data, 200);
   } catch (e) {
