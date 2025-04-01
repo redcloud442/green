@@ -241,6 +241,7 @@ export const withdrawListPostModel = async (params) => {
         },
         totalCount: BigInt(0),
         totalPendingWithdrawal: 0,
+        totalApprovedWithdrawal: 0,
     };
     const { page, limit, search, columnAccessor, userFilter, statusFilter, isAscendingSort, dateFilter, } = parameters;
     const offset = (page - 1) * limit;
@@ -258,11 +259,9 @@ export const withdrawListPostModel = async (params) => {
         commonConditions.push(Prisma.raw(`u.user_id::TEXT = '${userFilter}'`));
     }
     if (dateFilter?.start && dateFilter?.end) {
-        const startDate = new Date(dateFilter.start || new Date()).toISOString().split("T")[0] +
-            " 00:00:00.000";
-        const endDate = new Date(dateFilter.end || new Date()).toISOString().split("T")[0] +
-            " 23:59:59.999";
-        commonConditions.push(Prisma.raw(`t.alliance_withdrawal_request_date_updated BETWEEN '${startDate}' AND '${endDate}'`));
+        const startDate = getPhilippinesTime(new Date(dateFilter.start), "start");
+        const endDate = getPhilippinesTime(new Date(dateFilter.end), "end");
+        commonConditions.push(Prisma.raw(`t.alliance_withdrawal_request_date::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`));
     }
     if (search) {
         commonConditions.push(Prisma.raw(`(
@@ -333,12 +332,53 @@ export const withdrawListPostModel = async (params) => {
             returnData.data[status].data.push(request);
         }
     });
+    if (teamMemberProfile.alliance_member_role === "ACCOUNTING_HEAD") {
+        const totalApprovedWithdrawal = await prisma.alliance_withdrawal_request_table.aggregate({
+            where: {
+                alliance_withdrawal_request_status: "APPROVED",
+                alliance_withdrawal_request_date_updated: {
+                    gte: dateFilter?.start
+                        ? getPhilippinesTime(new Date(dateFilter.start), "start")
+                        : getPhilippinesTime(new Date(), "start"),
+                    lte: dateFilter?.end
+                        ? getPhilippinesTime(new Date(dateFilter.end), "end")
+                        : getPhilippinesTime(new Date(), "end"),
+                },
+            },
+            _sum: {
+                alliance_withdrawal_request_amount: true,
+                alliance_withdrawal_request_fee: true,
+            },
+        });
+        returnData.totalApprovedWithdrawal =
+            Number(totalApprovedWithdrawal._sum.alliance_withdrawal_request_amount) -
+                Number(totalApprovedWithdrawal._sum.alliance_withdrawal_request_fee);
+    }
     const totalPendingWithdrawal = await prisma.alliance_withdrawal_request_table.aggregate({
         where: {
             alliance_withdrawal_request_status: "PENDING",
-            ...(teamMemberProfile.alliance_member_role === "ACCOUNTING" && {
-                alliance_withdrawal_request_approved_by: teamMemberProfile.alliance_member_id,
-            }),
+            ...(teamMemberProfile.alliance_member_role === "ACCOUNTING"
+                ? {
+                    alliance_withdrawal_request_approved_by: teamMemberProfile.alliance_member_id,
+                    alliance_withdrawal_request_date: {
+                        gte: dateFilter?.start
+                            ? getPhilippinesTime(new Date(dateFilter.start), "start")
+                            : getPhilippinesTime(new Date(), "start"),
+                        lte: dateFilter?.end
+                            ? getPhilippinesTime(new Date(dateFilter.end), "end")
+                            : getPhilippinesTime(new Date(), "end"),
+                    },
+                }
+                : {
+                    alliance_withdrawal_request_date: {
+                        gte: dateFilter?.start
+                            ? getPhilippinesTime(new Date(dateFilter.start), "start")
+                            : getPhilippinesTime(new Date(), "start"),
+                        lte: dateFilter?.end
+                            ? getPhilippinesTime(new Date(dateFilter.end), "end")
+                            : getPhilippinesTime(new Date(), "end"),
+                    },
+                }),
         },
         _sum: {
             alliance_withdrawal_request_amount: true,

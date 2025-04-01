@@ -105,13 +105,30 @@ export const generateRandomAmounts = async () => {
             console.error("Invalid amount range in Redis");
             return [];
         }
-        const randomAmount = Math.floor(Math.random() * (max - min + 1)) + min;
+        const randomAmount = generatePrioritizedRandomAmount(min, max);
+        console.log(randomAmount);
         return [randomAmount];
     }
     catch (error) {
         console.error("Error generating random amount:", error);
         return [];
     }
+};
+const generatePrioritizedRandomAmount = (min, max) => {
+    // Decide with a weighted chance: 70% for round numbers, 30% for others
+    const favorRound = Math.random() < 0.8;
+    if (favorRound) {
+        const step = 1000; // change to 100 if you want smaller round values
+        const roundedMin = Math.ceil(min / step) * step;
+        const roundedMax = Math.floor(max / step) * step;
+        const numSteps = Math.floor((roundedMax - roundedMin) / step) + 1;
+        if (numSteps > 0) {
+            const randomIndex = Math.floor(Math.random() * numSteps);
+            return roundedMin + randomIndex * step;
+        }
+    }
+    // Fallback: return any random number if round number not possible or not chosen
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 let isRunning = true;
 let intervalId = null;

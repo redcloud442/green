@@ -221,8 +221,7 @@ export const depositListPostModel = async (params, teamMemberProfile) => {
     if (dateFilter?.start && dateFilter?.end) {
         const startDate = getPhilippinesTime(new Date(dateFilter.start || new Date()), "start");
         const endDate = getPhilippinesTime(new Date(dateFilter.end || new Date()), "end");
-        console.log(startDate, endDate);
-        commonConditions.push(Prisma.raw(`t.alliance_top_up_request_date_updated BETWEEN '${startDate}' AND '${endDate}'`));
+        commonConditions.push(Prisma.raw(`t.alliance_top_up_request_date::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`));
     }
     if (search) {
         commonConditions.push(Prisma.raw(`(
