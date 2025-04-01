@@ -352,10 +352,9 @@ export const depositListPostModel = async (
       "end"
     );
 
-    console.log(startDate, endDate);
     commonConditions.push(
       Prisma.raw(
-        `t.alliance_top_up_request_date_updated BETWEEN '${startDate}' AND '${endDate}'`
+        `t.alliance_top_up_request_date::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`
       )
     );
   }
@@ -485,18 +484,19 @@ OFFSET ${Prisma.raw(offset.toString())}
     returnData.merchantBalance = merchant?.merchant_member_balance;
   }
 
-  const totalPendingDeposit = await prisma.alliance_top_up_request_table.aggregate({
-    _sum: {
-      alliance_top_up_request_amount: true,
-    },
-    where: {
-      alliance_top_up_request_status: "PENDING",
-    },
-  });
+  const totalPendingDeposit =
+    await prisma.alliance_top_up_request_table.aggregate({
+      _sum: {
+        alliance_top_up_request_amount: true,
+      },
+      where: {
+        alliance_top_up_request_status: "PENDING",
+      },
+    });
 
   returnData.totalPendingDeposit =
     totalPendingDeposit._sum.alliance_top_up_request_amount || 0;
-  
+
   return JSON.parse(
     JSON.stringify(returnData, (key, value) =>
       typeof value === "bigint" ? value.toString() : value

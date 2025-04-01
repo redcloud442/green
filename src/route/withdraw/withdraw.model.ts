@@ -398,6 +398,7 @@ export const withdrawListPostModel = async (params: {
     },
     totalCount: BigInt(0),
     totalPendingWithdrawal: 0,
+    totalApprovedWithdrawal: 0,
   };
 
   const {
@@ -437,19 +438,12 @@ export const withdrawListPostModel = async (params: {
   }
 
   if (dateFilter?.start && dateFilter?.end) {
-    const startDate = getPhilippinesTime(
-      new Date(dateFilter.start || new Date()),
-      "start"
-    );
-
-    const endDate = getPhilippinesTime(
-      new Date(dateFilter.end || new Date()),
-      "end"
-    );
+    const startDate = getPhilippinesTime(new Date(dateFilter.start), "start");
+    const endDate = getPhilippinesTime(new Date(dateFilter.end), "end");
 
     commonConditions.push(
       Prisma.raw(
-        `t.alliance_withdrawal_request_date_updated BETWEEN '${startDate}' AND '${endDate}'`
+        `t.alliance_withdrawal_request_date::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`
       )
     );
   }
@@ -546,14 +540,58 @@ export const withdrawListPostModel = async (params: {
     }
   });
 
+  if (teamMemberProfile.alliance_member_role === "ACCOUNTING_HEAD") {
+    const totalApprovedWithdrawal =
+      await prisma.alliance_withdrawal_request_table.aggregate({
+        where: {
+          alliance_withdrawal_request_status: "APPROVED",
+          alliance_withdrawal_request_date_updated: {
+            gte: dateFilter?.start
+              ? getPhilippinesTime(new Date(dateFilter.start), "start")
+              : getPhilippinesTime(new Date(), "start"),
+            lte: dateFilter?.end
+              ? getPhilippinesTime(new Date(dateFilter.end), "end")
+              : getPhilippinesTime(new Date(), "end"),
+          },
+        },
+        _sum: {
+          alliance_withdrawal_request_amount: true,
+          alliance_withdrawal_request_fee: true,
+        },
+      });
+
+    returnData.totalApprovedWithdrawal =
+      Number(totalApprovedWithdrawal._sum.alliance_withdrawal_request_amount) -
+      Number(totalApprovedWithdrawal._sum.alliance_withdrawal_request_fee);
+  }
+
   const totalPendingWithdrawal =
     await prisma.alliance_withdrawal_request_table.aggregate({
       where: {
         alliance_withdrawal_request_status: "PENDING",
-        ...(teamMemberProfile.alliance_member_role === "ACCOUNTING" && {
-          alliance_withdrawal_request_approved_by:
-            teamMemberProfile.alliance_member_id,
-        }),
+        ...(teamMemberProfile.alliance_member_role === "ACCOUNTING"
+          ? {
+              alliance_withdrawal_request_approved_by:
+                teamMemberProfile.alliance_member_id,
+              alliance_withdrawal_request_date: {
+                gte: dateFilter?.start
+                  ? getPhilippinesTime(new Date(dateFilter.start), "start")
+                  : getPhilippinesTime(new Date(), "start"),
+                lte: dateFilter?.end
+                  ? getPhilippinesTime(new Date(dateFilter.end), "end")
+                  : getPhilippinesTime(new Date(), "end"),
+              },
+            }
+          : {
+              alliance_withdrawal_request_date: {
+                gte: dateFilter?.start
+                  ? getPhilippinesTime(new Date(dateFilter.start), "start")
+                  : getPhilippinesTime(new Date(), "start"),
+                lte: dateFilter?.end
+                  ? getPhilippinesTime(new Date(dateFilter.end), "end")
+                  : getPhilippinesTime(new Date(), "end"),
+              },
+            }),
       },
       _sum: {
         alliance_withdrawal_request_amount: true,

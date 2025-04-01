@@ -87,6 +87,7 @@ export type WithdrawReturnDataType = {
   };
   totalCount: bigint;
   totalPendingWithdrawal: number;
+  totalApprovedWithdrawal: number;
 };
 
 export type PackageMemberWithPackage = package_member_connection_table & {
