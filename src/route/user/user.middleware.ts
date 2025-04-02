@@ -16,6 +16,7 @@ import {
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import {
+    protectionAccountingMerchantAdmin,
   protectionAdmin,
   protectionMemberUser,
 } from "../../utils/protection.js";
@@ -594,7 +595,7 @@ export const userListReinvestedMiddleware = async (c: Context, next: Next) => {
 export const userTreeMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
 
-  const response = await protectionAdmin(user.id, prisma);
+  const response = await protectionAccountingMerchantAdmin(user.id, prisma);
 
   if (response instanceof Response) {
     return response;
