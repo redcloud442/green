@@ -13,6 +13,7 @@ import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import {
   protectionAccountingAdmin,
+  protectionAccountingMerchantAdmin,
   protectionMemberUser,
 } from "../../utils/protection.js";
 import { rateLimit, redis } from "../../utils/redis.js";
@@ -356,7 +357,7 @@ export const withdrawTotalReportPostMiddleware = async (
 export const withdrawBanListPostMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
 
-  const response = await protectionAccountingAdmin(user.id, prisma);
+  const response = await protectionAccountingMerchantAdmin(user.id, prisma);
 
   if (response instanceof Response) {
     return response;
@@ -398,7 +399,7 @@ export const withdrawBanListPostMiddleware = async (c: Context, next: Next) => {
 export const withdrawBanListGetMiddleware = async (c: Context, next: Next) => {
   const user = c.get("user");
 
-  const response = await protectionAccountingAdmin(user.id, prisma);
+  const response = await protectionAccountingMerchantAdmin(user.id, prisma);
 
   if (response instanceof Response) {
     return response;
@@ -448,7 +449,7 @@ export const withdrawBanListDeleteMiddleware = async (
 ) => {
   const user = c.get("user");
 
-  const response = await protectionAccountingAdmin(user.id, prisma);
+  const response = await protectionAccountingMerchantAdmin(user.id, prisma);
 
   if (response instanceof Response) {
     return response;
