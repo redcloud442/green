@@ -569,7 +569,9 @@ export const withdrawListPostModel = async (params: {
       where: {
         alliance_withdrawal_request_status: "PENDING",
         alliance_withdrawal_request_approved_by:
-          teamMemberProfile.alliance_member_id,
+          teamMemberProfile.alliance_member_role === "ACCOUNTING"
+            ? teamMemberProfile.alliance_member_id
+            : undefined,
         alliance_withdrawal_request_date:
           dateFilter?.start && dateFilter?.end
             ? {
