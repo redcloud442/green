@@ -545,14 +545,13 @@ export const withdrawListPostModel = async (params: {
       await prisma.alliance_withdrawal_request_table.aggregate({
         where: {
           alliance_withdrawal_request_status: "APPROVED",
-          alliance_withdrawal_request_date_updated: {
-            gte: dateFilter?.start
-              ? getPhilippinesTime(new Date(dateFilter.start), "start")
-              : getPhilippinesTime(new Date(), "start"),
-            lte: dateFilter?.end
-              ? getPhilippinesTime(new Date(dateFilter.end), "end")
-              : getPhilippinesTime(new Date(), "end"),
-          },
+          alliance_withdrawal_request_date_updated:
+            dateFilter?.start && dateFilter?.end
+              ? {
+                  gte: getPhilippinesTime(new Date(dateFilter.start), "start"),
+                  lte: getPhilippinesTime(new Date(dateFilter.end), "end"),
+                }
+              : undefined,
         },
         _sum: {
           alliance_withdrawal_request_amount: true,
@@ -569,16 +568,15 @@ export const withdrawListPostModel = async (params: {
     await prisma.alliance_withdrawal_request_table.aggregate({
       where: {
         alliance_withdrawal_request_status: "PENDING",
-        ...(teamMemberProfile.alliance_member_role === "ACCOUNTING"
-          ? {
-              alliance_withdrawal_request_approved_by:
-                teamMemberProfile.alliance_member_id,
-              alliance_withdrawal_request_date: dateFilter?.start && dateFilter?.end ? {
+        alliance_withdrawal_request_approved_by:
+          teamMemberProfile.alliance_member_id,
+        alliance_withdrawal_request_date:
+          dateFilter?.start && dateFilter?.end
+            ? {
                 gte: getPhilippinesTime(new Date(dateFilter.start), "start"),
                 lte: getPhilippinesTime(new Date(dateFilter.end), "end"),
-              } : undefined
-            }
-          : undefined),
+              }
+            : undefined,
       },
       _sum: {
         alliance_withdrawal_request_amount: true,
