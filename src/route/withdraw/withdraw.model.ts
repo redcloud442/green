@@ -573,25 +573,12 @@ export const withdrawListPostModel = async (params: {
           ? {
               alliance_withdrawal_request_approved_by:
                 teamMemberProfile.alliance_member_id,
-              alliance_withdrawal_request_date: {
-                gte: dateFilter?.start
-                  ? getPhilippinesTime(new Date(dateFilter.start), "start")
-                  : getPhilippinesTime(new Date(), "start"),
-                lte: dateFilter?.end
-                  ? getPhilippinesTime(new Date(dateFilter.end), "end")
-                  : getPhilippinesTime(new Date(), "end"),
-              },
+              alliance_withdrawal_request_date: dateFilter?.start && dateFilter?.end ? {
+                gte: getPhilippinesTime(new Date(dateFilter.start), "start"),
+                lte: getPhilippinesTime(new Date(dateFilter.end), "end"),
+              } : undefined
             }
-          : {
-              alliance_withdrawal_request_date: {
-                gte: dateFilter?.start
-                  ? getPhilippinesTime(new Date(dateFilter.start), "start")
-                  : getPhilippinesTime(new Date(), "start"),
-                lte: dateFilter?.end
-                  ? getPhilippinesTime(new Date(dateFilter.end), "end")
-                  : getPhilippinesTime(new Date(), "end"),
-              },
-            }),
+          : undefined),
       },
       _sum: {
         alliance_withdrawal_request_amount: true,

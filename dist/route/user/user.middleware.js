@@ -1,7 +1,7 @@
 import { userChangePasswordSchema, userGenerateLinkSchema, userListReinvestedSchema, userListSchema, userPreferredBankSchema, userProfileDataSchema, userProfileSchemaPatch, userSchemaPatch, userSchemaPost, userSchemaPut, userSponsorSchema, userTreeSchema, } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
-import { protectionAdmin, protectionMemberUser, } from "../../utils/protection.js";
+import { protectionAccountingMerchantAdmin, protectionAdmin, protectionMemberUser, } from "../../utils/protection.js";
 import { rateLimit } from "../../utils/redis.js";
 export const userPutMiddleware = async (c, next) => {
     const user = c.get("user");
@@ -336,7 +336,7 @@ export const userListReinvestedMiddleware = async (c, next) => {
 };
 export const userTreeMiddleware = async (c, next) => {
     const user = c.get("user");
-    const response = await protectionAdmin(user.id, prisma);
+    const response = await protectionAccountingMerchantAdmin(user.id, prisma);
     if (response instanceof Response) {
         return response;
     }
