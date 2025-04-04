@@ -76,6 +76,7 @@ export type ReturnDataType = {
   totalCount: bigint;
   merchantBalance?: number;
   totalPendingDeposit: number;
+  totalApprovedDeposit: number;
 };
 
 export type WithdrawReturnDataType = {
