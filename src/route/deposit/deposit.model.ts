@@ -519,7 +519,10 @@ OFFSET ${Prisma.raw(offset.toString())}
                   gte: getPhilippinesTime(new Date(dateFilter.start), "start"),
                   lte: getPhilippinesTime(new Date(dateFilter.end), "end"),
                 }
-              : undefined,
+              : {
+                  gte: getPhilippinesTime(new Date(), "start"),
+                  lte: getPhilippinesTime(new Date(), "end"),
+                },
         },
       });
 
