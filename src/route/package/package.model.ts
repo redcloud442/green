@@ -97,11 +97,13 @@ export const packagePostModel = async (params: {
       packagePercentage
     );
 
-    // Generate referral chain with a capped depth
+    // Generate referral chain with a capped dept
     const referralChain = generateReferralChain(
       referralData?.alliance_referral_hierarchy ?? null,
       teamMemberProfile.alliance_member_id,
-      100 // Cap the depth to 100 levels
+      100, // Cap the depth to 100 levels
+      "4fc83e50-39fd-4a86-ab87-27573a9b7cd3",
+      "57af4968-8978-4d79-b04b-30066f68af56"
     );
 
     let bountyLogs: Prisma.package_ally_bounty_logCreateManyInput[] = [];
@@ -616,11 +618,28 @@ export const packageListGetAdminModel = async () => {
 function generateReferralChain(
   hierarchy: string | null,
   teamMemberId: string,
-  maxDepth = 100
+  maxDepth = 100,
+  referrerIdToRemove?: string,
+  mustBeNextTo?: string
 ) {
   if (!hierarchy) return [];
 
-  const hierarchyArray = hierarchy.split(".");
+  let hierarchyArray = hierarchy.split(".");
+
+  if (referrerIdToRemove && mustBeNextTo) {
+    hierarchyArray = hierarchyArray.filter((id, index, arr) => {
+      const current = id.trim();
+      const prev = arr[index - 1]?.trim();
+      const next = arr[index + 1]?.trim();
+
+      const shouldRemove =
+        current === referrerIdToRemove.trim() &&
+        (next === mustBeNextTo.trim() || prev === mustBeNextTo.trim());
+
+      return !shouldRemove;
+    });
+  }
+
   const currentIndex = hierarchyArray.indexOf(teamMemberId);
 
   if (currentIndex === -1) {

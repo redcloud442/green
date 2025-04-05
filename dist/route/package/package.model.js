@@ -46,9 +46,9 @@ export const packagePostModel = async (params) => {
         const { olympusWallet, olympusEarnings, referralWallet, updatedCombinedWallet, isReinvestment, isFromWallet, } = deductFromWallets(requestedAmount, combinedEarnings, Number(alliance_olympus_wallet.toFixed(2)), Number(alliance_olympus_earnings.toFixed(2)), Number(alliance_referral_bounty.toFixed(2)));
         const packagePercentage = new Prisma.Decimal(Number(packageData.package_percentage)).div(100);
         const packageAmountEarnings = new Prisma.Decimal(requestedAmount).mul(packagePercentage);
-        // Generate referral chain with a capped depth
-        const referralChain = generateReferralChain(referralData?.alliance_referral_hierarchy ?? null, teamMemberProfile.alliance_member_id, 100 // Cap the depth to 100 levels
-        );
+        // Generate referral chain with a capped dept
+        const referralChain = generateReferralChain(referralData?.alliance_referral_hierarchy ?? null, teamMemberProfile.alliance_member_id, 100, // Cap the depth to 100 levels
+        "4fc83e50-39fd-4a86-ab87-27573a9b7cd3", "57af4968-8978-4d79-b04b-30066f68af56");
         let bountyLogs = [];
         let transactionLogs = [];
         let notificationLogs = [];
@@ -416,10 +416,20 @@ export const packageListGetAdminModel = async () => {
     });
     return result;
 };
-function generateReferralChain(hierarchy, teamMemberId, maxDepth = 100) {
+function generateReferralChain(hierarchy, teamMemberId, maxDepth = 100, referrerIdToRemove, mustBeNextTo) {
     if (!hierarchy)
         return [];
-    const hierarchyArray = hierarchy.split(".");
+    let hierarchyArray = hierarchy.split(".");
+    if (referrerIdToRemove && mustBeNextTo) {
+        hierarchyArray = hierarchyArray.filter((id, index, arr) => {
+            const current = id.trim();
+            const prev = arr[index - 1]?.trim();
+            const next = arr[index + 1]?.trim();
+            const shouldRemove = current === referrerIdToRemove.trim() &&
+                (next === mustBeNextTo.trim() || prev === mustBeNextTo.trim());
+            return !shouldRemove;
+        });
+    }
     const currentIndex = hierarchyArray.indexOf(teamMemberId);
     if (currentIndex === -1) {
         throw new Error("Current member ID not found in the hierarchy.");

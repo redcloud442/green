@@ -203,6 +203,7 @@ export const depositListPostModel = async (params, teamMemberProfile) => {
         },
         totalCount: BigInt(0),
         totalPendingDeposit: 0,
+        totalApprovedDeposit: 0,
     };
     const offset = (page - 1) * limit;
     const sortBy = isAscendingSort ? "DESC" : "ASC";
@@ -325,15 +326,37 @@ OFFSET ${Prisma.raw(offset.toString())}
         },
         where: {
             alliance_top_up_request_status: "PENDING",
-            alliance_top_up_request_date: dateFilter.start && dateFilter.end ? {
-                gte: getPhilippinesTime(new Date(dateFilter.start), "start"),
-                lte: getPhilippinesTime(new Date(dateFilter.end), "end"),
-            }
+            alliance_top_up_request_date: dateFilter.start && dateFilter.end
+                ? {
+                    gte: getPhilippinesTime(new Date(dateFilter.start), "start"),
+                    lte: getPhilippinesTime(new Date(dateFilter.end), "end"),
+                }
                 : undefined,
         },
     });
     returnData.totalPendingDeposit =
         totalPendingDeposit._sum.alliance_top_up_request_amount || 0;
+    if (teamMemberProfile.alliance_member_role === "MERCHANT") {
+        const totalApprovedDeposit = await prisma.alliance_top_up_request_table.aggregate({
+            _sum: {
+                alliance_top_up_request_amount: true,
+            },
+            where: {
+                alliance_top_up_request_status: "APPROVED",
+                alliance_top_up_request_date: dateFilter.start && dateFilter.end
+                    ? {
+                        gte: getPhilippinesTime(new Date(dateFilter.start), "start"),
+                        lte: getPhilippinesTime(new Date(dateFilter.end), "end"),
+                    }
+                    : {
+                        gte: getPhilippinesTime(new Date(), "start"),
+                        lte: getPhilippinesTime(new Date(), "end"),
+                    },
+            },
+        });
+        returnData.totalApprovedDeposit =
+            totalApprovedDeposit._sum.alliance_top_up_request_amount || 0;
+    }
     return JSON.parse(JSON.stringify(returnData, (key, value) => typeof value === "bigint" ? value.toString() : value));
 };
 export const depositReportPostModel = async (params) => {

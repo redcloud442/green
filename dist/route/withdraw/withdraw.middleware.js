@@ -1,7 +1,7 @@
 import { updateWithdrawSchema, withdrawBanListGetSchema, withdrawBanListPostSchema, withdrawHistoryPostSchema, withdrawHistoryReportPostSchema, withdrawListPostSchema, withdrawPostSchema, withdrawTotalReportPostSchema, } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
-import { protectionAccountingAdmin, protectionMemberUser, } from "../../utils/protection.js";
+import { protectionAccountingAdmin, protectionAccountingMerchantAdmin, protectionMemberUser, } from "../../utils/protection.js";
 import { rateLimit, redis } from "../../utils/redis.js";
 export const withdrawPostMiddleware = async (c, next) => {
     const user = c.get("user");
@@ -198,7 +198,7 @@ export const withdrawTotalReportPostMiddleware = async (c, next) => {
 };
 export const withdrawBanListPostMiddleware = async (c, next) => {
     const user = c.get("user");
-    const response = await protectionAccountingAdmin(user.id, prisma);
+    const response = await protectionAccountingMerchantAdmin(user.id, prisma);
     if (response instanceof Response) {
         return response;
     }
@@ -223,7 +223,7 @@ export const withdrawBanListPostMiddleware = async (c, next) => {
 };
 export const withdrawBanListGetMiddleware = async (c, next) => {
     const user = c.get("user");
-    const response = await protectionAccountingAdmin(user.id, prisma);
+    const response = await protectionAccountingMerchantAdmin(user.id, prisma);
     if (response instanceof Response) {
         return response;
     }
@@ -252,7 +252,7 @@ export const withdrawBanListGetMiddleware = async (c, next) => {
 };
 export const withdrawBanListDeleteMiddleware = async (c, next) => {
     const user = c.get("user");
-    const response = await protectionAccountingAdmin(user.id, prisma);
+    const response = await protectionAccountingMerchantAdmin(user.id, prisma);
     if (response instanceof Response) {
         return response;
     }
