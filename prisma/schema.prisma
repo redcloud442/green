@@ -355,6 +355,7 @@ model package_table {
   package_is_disabled Boolean @default(false)
   package_color      String?
   package_image      String?
+  package_is_promo   Boolean @default(false)
 
   package_member_connection_table package_member_connection_table[]
   package_earnings_log package_earnings_log[]
@@ -430,6 +431,13 @@ model package_ally_bounty_log {
   alliance_member_table alliance_member_table @relation(fields: [package_ally_bounty_member_id], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
   package_member_connection_table package_member_connection_table @relation(fields: [package_ally_bounty_connection_id], references: [package_member_connection_id], onDelete: Cascade, onUpdate: Cascade)
   alliance_member_table_from alliance_member_table? @relation("FromMember",fields: [package_ally_bounty_from], references: [alliance_member_id], onDelete: Cascade, onUpdate: Cascade)
+  @@schema("packages_schema")
+}
+
+model package_company_funds_table {
+  package_company_funds_id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  package_company_funds_amount Float @default(0)
+
   @@schema("packages_schema")
 }
 

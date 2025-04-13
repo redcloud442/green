@@ -7,6 +7,7 @@ import {
   packageListGetAdminModel,
   packageListGetModel,
   packagePostModel,
+  packageUpdateFundPostModel,
   packageUpdatePutModel,
 } from "./package.model.js";
 
@@ -137,6 +138,20 @@ export const packagesGetAdminController = async (c: Context) => {
     const data = await packageListGetAdminModel();
 
     return c.json({ data });
+  } catch (error) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const packagesUpdateFundPostController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    await packageUpdateFundPostModel({
+      amount: params.amount,
+    });
+
+    return c.json({ message: "Package Fund Updated" });
   } catch (error) {
     return sendErrorResponse("Internal Server Error", 500);
   }

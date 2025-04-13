@@ -7,6 +7,7 @@ import {
   packagesCreatePostController,
   packagesGetAdminController,
   packagesListPostController,
+  packagesUpdateFundPostController,
   packagesUpdatePutController,
 } from "./package.controller.js";
 import {
@@ -15,6 +16,7 @@ import {
   packagePostMiddleware,
   packagesClaimPostMiddleware,
   packagesGetListMiddleware,
+  packagesUpdateFundPostMiddleware,
   packageUpdatePutMiddleware,
 } from "./package.middleware.js";
 
@@ -40,6 +42,12 @@ packages.post(
   "/claim",
   packagesClaimPostMiddleware,
   packagesClaimPostController
+);
+
+packages.patch(
+  "/update-funds",
+  packagesUpdateFundPostMiddleware,
+  packagesUpdateFundPostController
 );
 
 export default packages;

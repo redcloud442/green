@@ -68,3 +68,14 @@ export const getPhilippinesTime = (
 
   return resultDate.toISOString();
 };
+
+export const generateBonus = (amount: number) => {
+  let bonus = 0;
+  if (amount < 300) {
+    return bonus;
+  }
+
+  bonus = amount * 0.1;
+
+  return bonus;
+};

@@ -74,6 +74,9 @@ export const packagePostModel = async (params: {
       throw new Error("Insufficient balance in the wallet.");
     }
 
+    const packageIseaster =
+      packageData.package_name === "Easter" ? requestedAmount * 0.15 : 0;
+
     const {
       olympusWallet,
       olympusEarnings,
@@ -112,11 +115,13 @@ export const packagePostModel = async (params: {
     let notificationLogs: Prisma.alliance_notification_tableCreateManyInput[] =
       [];
 
+    const requestedAmountWithBonus = requestedAmount + packageIseaster;
+
     const connectionData = await tx.package_member_connection_table.create({
       data: {
         package_member_member_id: teamMemberProfile.alliance_member_id,
         package_member_package_id: packageId,
-        package_member_amount: Number(requestedAmount.toFixed(2)),
+        package_member_amount: Number(requestedAmountWithBonus.toFixed(2)),
         package_amount_earnings: Number(packageAmountEarnings.toFixed(2)),
         package_member_status: "ACTIVE",
         package_member_completion_date: new Date(
@@ -130,7 +135,9 @@ export const packagePostModel = async (params: {
       data: {
         transaction_member_id: teamMemberProfile.alliance_member_id,
         transaction_amount: Number(requestedAmount.toFixed(2)),
-        transaction_description: `Package Enrolled: ${packageData.package_name}`,
+        transaction_description: `Package Enrolled: ${
+          packageData.package_name
+        } ${packageIseaster > 0 ? `with 15% bonus` : ""}`,
       },
     });
 
@@ -246,6 +253,17 @@ export const packagePostModel = async (params: {
           },
         });
       }
+
+      await tx.package_company_funds_table.update({
+        where: {
+          package_company_funds_id: "abd721e9-90c0-40b1-bd17-c4e7494c5141",
+        },
+        data: {
+          package_company_funds_amount: {
+            decrement: Number(packageAmountEarnings.toFixed(2)),
+          },
+        },
+      });
     }
     if (isFromWallet) {
       const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
@@ -613,6 +631,23 @@ export const packageListGetAdminModel = async () => {
   });
 
   return result;
+};
+
+export const packageUpdateFundPostModel = async (params: {
+  amount: number;
+}) => {
+  const { amount } = params;
+
+  const result = await prisma.package_company_funds_table.update({
+    where: {
+      package_company_funds_id: "abd721e9-90c0-40b1-bd17-c4e7494c5141",
+    },
+    data: {
+      package_company_funds_amount: {
+        increment: amount,
+      },
+    },
+  });
 };
 
 function generateReferralChain(
