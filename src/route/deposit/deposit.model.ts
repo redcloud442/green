@@ -136,9 +136,10 @@ export const depositPutModel = async (params: {
     await tx.alliance_transaction_table.create({
       data: {
         transaction_description: `Deposit ${
-          status === "APPROVED" ? `Success + ${bonus}%` : `Failed`
+          status === "APPROVED" ? `Success + 10% bonus` : `Failed`
         } ${note ? `(${note})` : ""}`,
-        transaction_amount: updatedRequest.alliance_top_up_request_amount,
+        transaction_amount:
+          updatedRequest.alliance_top_up_request_amount + bonus,
         transaction_member_id: updatedRequest.alliance_top_up_request_member_id,
       },
     });
@@ -153,9 +154,9 @@ export const depositPutModel = async (params: {
           alliance_earnings_member_id:
             updatedRequest.alliance_top_up_request_member_id,
           alliance_olympus_wallet:
-            updatedRequest.alliance_top_up_request_amount,
+            updatedRequest.alliance_top_up_request_amount + bonus,
           alliance_combined_earnings:
-            updatedRequest.alliance_top_up_request_amount,
+            updatedRequest.alliance_top_up_request_amount + bonus,
         },
         update: {
           alliance_olympus_wallet: {
