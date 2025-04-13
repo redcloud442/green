@@ -75,7 +75,7 @@ export const packagePostModel = async (params: {
     }
 
     const packageIseaster =
-      packageData.package_name === "Easter" ? requestedAmount * 0.15 : 0;
+      packageData.package_name === "EASTER" ? requestedAmount * 0.15 : 0;
 
     const {
       olympusWallet,
@@ -265,24 +265,24 @@ export const packagePostModel = async (params: {
         },
       });
     }
-    if (isFromWallet) {
-      const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
-        "en-US",
-        {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }
-      )}: ${packageData.package_name} Package. Congratulations!`;
-      try {
-        await prisma.package_notification_table.create({
-          data: {
-            package_notification_message: message,
-          },
-        });
-      } catch (error) {
-        console.error("Notification Error:", error);
-      }
-    }
+    // if (isFromWallet) {
+    //   const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
+    //     "en-US",
+    //     {
+    //       minimumFractionDigits: 2,
+    //       maximumFractionDigits: 2,
+    //     }
+    //   )}: ${packageData.package_name} Package. Congratulations!`;
+    //   try {
+    //     await prisma.package_notification_table.create({
+    //       data: {
+    //         package_notification_message: message,
+    //       },
+    //     });
+    //   } catch (error) {
+    //     console.error("Notification Error:", error);
+    //   }
+    // }
 
     return connectionData;
   });
@@ -648,6 +648,8 @@ export const packageUpdateFundPostModel = async (params: {
       },
     },
   });
+
+  return result;
 };
 
 function generateReferralChain(
