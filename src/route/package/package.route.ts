@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import {
   packageGetController,
   packagePostController,
+  packageReinvestmentPostController,
   packagesClaimPostController,
   packagesCreatePostController,
   packagesGetAdminController,
@@ -48,6 +49,12 @@ packages.patch(
   "/update-funds",
   packagesUpdateFundPostMiddleware,
   packagesUpdateFundPostController
+);
+
+packages.post(
+  "/reinvestment",
+  packagePostMiddleware,
+  packageReinvestmentPostController
 );
 
 export default packages;
