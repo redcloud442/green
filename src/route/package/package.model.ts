@@ -134,7 +134,7 @@ export const packagePostModel = async (params: {
     await tx.alliance_transaction_table.create({
       data: {
         transaction_member_id: teamMemberProfile.alliance_member_id,
-        transaction_amount: Number(requestedAmount.toFixed(2)),
+        transaction_amount: Number(requestedAmountWithBonus.toFixed(2)),
         transaction_description: `Package Enrolled: ${
           packageData.package_name
         } ${packageIseaster > 0 ? `with 15% bonus` : ""}`,

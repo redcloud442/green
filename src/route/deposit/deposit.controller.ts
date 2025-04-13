@@ -33,6 +33,7 @@ export const depositPostController = async (c: Context) => {
     publicUrls.forEach(async (url: string) => {
       await supabase.storage.from("REQUEST_ATTACHMENTS").remove([url]);
     });
+    console.log(e);
     return c.json({ message: "Internal Server Error" }, { status: 500 });
   }
 };
