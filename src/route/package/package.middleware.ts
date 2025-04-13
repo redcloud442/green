@@ -327,13 +327,15 @@ export const packagesUpdateFundPostMiddleware = async (
     return sendErrorResponse("Too Many Requests", 429);
   }
 
-  const { amount } = await c.req.json();
+  const { type, amount } = await c.req.json();
 
   const validation = updatePackageFundSchema.safeParse({
     amount,
+    type,
   });
 
   if (!validation.success) {
+    console.log(validation.error);
     return sendErrorResponse("Invalid request", 400);
   }
 

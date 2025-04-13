@@ -315,6 +315,7 @@ export const claimPackagePutSchema = z.object({
 
 export const updatePackageFundSchema = z.object({
   amount: z.number().min(1),
+  type: z.enum(["add", "deduct"]),
 });
 
 //merchant schema

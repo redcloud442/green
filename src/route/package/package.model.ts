@@ -635,8 +635,11 @@ export const packageListGetAdminModel = async () => {
 
 export const packageUpdateFundPostModel = async (params: {
   amount: number;
+  type: string;
 }) => {
-  const { amount } = params;
+  const { amount, type } = params;
+
+  const typeValue = type === "add" ? "increment" : "decrement";
 
   const result = await prisma.package_company_funds_table.update({
     where: {
@@ -644,7 +647,7 @@ export const packageUpdateFundPostModel = async (params: {
     },
     data: {
       package_company_funds_amount: {
-        increment: amount,
+        [typeValue]: amount,
       },
     },
   });

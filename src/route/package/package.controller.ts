@@ -150,6 +150,7 @@ export const packagesUpdateFundPostController = async (c: Context) => {
 
     await packageUpdateFundPostModel({
       amount: params.amount,
+      type: params.type,
     });
 
     return c.json({ message: "Package Fund Updated" });
