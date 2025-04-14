@@ -74,9 +74,6 @@ export const packagePostModel = async (params: {
       throw new Error("Insufficient balance in the wallet.");
     }
 
-    const packageIseaster =
-      packageData.package_name === "EASTER" ? requestedAmount * 0.15 : 0;
-
     const {
       olympusWallet,
       olympusEarnings,
@@ -115,7 +112,7 @@ export const packagePostModel = async (params: {
     let notificationLogs: Prisma.alliance_notification_tableCreateManyInput[] =
       [];
 
-    const requestedAmountWithBonus = requestedAmount + packageIseaster;
+    const requestedAmountWithBonus = requestedAmount;
 
     const connectionData = await tx.package_member_connection_table.create({
       data: {
@@ -135,9 +132,7 @@ export const packagePostModel = async (params: {
       data: {
         transaction_member_id: teamMemberProfile.alliance_member_id,
         transaction_amount: Number(requestedAmountWithBonus.toFixed(2)),
-        transaction_description: `Package Enrolled: ${
-          packageData.package_name
-        } ${packageIseaster > 0 ? `with 15% bonus` : ""}`,
+        transaction_description: `Package Enrolled: ${packageData.package_name}`,
       },
     });
 
