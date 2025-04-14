@@ -3,10 +3,12 @@ import { Hono } from "hono";
 import {
   packageGetController,
   packagePostController,
+  packageReinvestmentPostController,
   packagesClaimPostController,
   packagesCreatePostController,
   packagesGetAdminController,
   packagesListPostController,
+  packagesUpdateFundPostController,
   packagesUpdatePutController,
 } from "./package.controller.js";
 import {
@@ -15,6 +17,7 @@ import {
   packagePostMiddleware,
   packagesClaimPostMiddleware,
   packagesGetListMiddleware,
+  packagesUpdateFundPostMiddleware,
   packageUpdatePutMiddleware,
 } from "./package.middleware.js";
 
@@ -40,6 +43,18 @@ packages.post(
   "/claim",
   packagesClaimPostMiddleware,
   packagesClaimPostController
+);
+
+packages.patch(
+  "/update-funds",
+  packagesUpdateFundPostMiddleware,
+  packagesUpdateFundPostController
+);
+
+packages.post(
+  "/reinvestment",
+  packagePostMiddleware,
+  packageReinvestmentPostController
 );
 
 export default packages;

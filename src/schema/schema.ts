@@ -313,6 +313,11 @@ export const claimPackagePutSchema = z.object({
   packageConnectionId: z.string().uuid(),
 });
 
+export const updatePackageFundSchema = z.object({
+  amount: z.number().min(1),
+  type: z.enum(["add", "deduct"]),
+});
+
 //merchant schema
 
 export const merchantDeleteSchema = z.object({
