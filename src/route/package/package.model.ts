@@ -716,8 +716,12 @@ export const packagePostReinvestmentModel = async (params: {
       throw new Error("Insufficient balance in the wallet.");
     }
 
+    const bonusAmount = requestedAmount * 0.15;
+
     const packageIseaster =
-      packageData.package_name === "EASTER" ? requestedAmount * 0.15 : 0;
+      packageData.package_name === "EASTER" ? bonusAmount : 0;
+
+    const finalAmount = requestedAmount + packageIseaster;
 
     const {
       olympusEarnings,
@@ -735,7 +739,7 @@ export const packagePostReinvestmentModel = async (params: {
       Number(packageData.package_percentage)
     ).div(100);
 
-    const packageAmountEarnings = new Prisma.Decimal(requestedAmount).mul(
+    const packageAmountEarnings = new Prisma.Decimal(finalAmount).mul(
       packagePercentage
     );
 
@@ -805,7 +809,7 @@ export const packagePostReinvestmentModel = async (params: {
         bountyLogs = batch.map((ref) => {
           // Calculate earnings based on ref.percentage and round to the nearest integer
           const calculatedEarnings =
-            (Number(amount) * Number(ref.percentage)) / 100;
+            (Number(finalAmount) * Number(ref.percentage)) / 100;
 
           return {
             package_ally_bounty_member_id: ref.referrerId,
@@ -820,7 +824,7 @@ export const packagePostReinvestmentModel = async (params: {
 
         transactionLogs = batch.map((ref) => {
           const calculatedEarnings =
-            (Number(amount) * Number(ref.percentage)) / 100;
+            (Number(finalAmount) * Number(ref.percentage)) / 100;
 
           return {
             transaction_member_id: ref.referrerId,
@@ -849,7 +853,7 @@ export const packagePostReinvestmentModel = async (params: {
             if (!ref.referrerId) return;
 
             const calculatedEarnings =
-              (Number(amount) * Number(ref.percentage)) / 100;
+              (Number(finalAmount) * Number(ref.percentage)) / 100;
 
             await tx.alliance_earnings_table.update({
               where: { alliance_earnings_member_id: ref.referrerId },
