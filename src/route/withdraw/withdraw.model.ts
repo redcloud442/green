@@ -289,7 +289,10 @@ export const updateWithdrawModel = async (params: {
       throw new Error("Request not found.");
     }
 
-    if (existingRequest.alliance_withdrawal_request_status !== "PENDING") {
+    if (
+      existingRequest.alliance_withdrawal_request_status !== "PENDING" &&
+      existingRequest.alliance_withdrawal_request_status !== "HOLD"
+    ) {
       throw new Error("Request is not pending.");
     }
 
@@ -337,34 +340,36 @@ export const updateWithdrawModel = async (params: {
       });
     }
 
-    await tx.alliance_transaction_table.create({
-      data: {
-        transaction_description: `${
-          status === "APPROVED"
-            ? "Congratulations! Withdrawal Request Sent"
-            : `Withdrawal Request Failed, ${note}`
-        }`,
+    if (status !== "HOLD") {
+      await tx.alliance_transaction_table.create({
+        data: {
+          transaction_description: `${
+            status === "APPROVED"
+              ? "Congratulations! Withdrawal Request Sent"
+              : `Withdrawal Request Failed, ${note}`
+          }`,
 
-        transaction_amount: Number(
-          updatedRequest.alliance_withdrawal_request_amount -
-            updatedRequest.alliance_withdrawal_request_fee
-        ),
-        transaction_member_id:
-          updatedRequest.alliance_withdrawal_request_member_id,
-      },
-    });
+          transaction_amount: Number(
+            updatedRequest.alliance_withdrawal_request_amount -
+              updatedRequest.alliance_withdrawal_request_fee
+          ),
+          transaction_member_id:
+            updatedRequest.alliance_withdrawal_request_member_id,
+        },
+      });
 
-    await tx.alliance_notification_table.create({
-      data: {
-        alliance_notification_user_id:
-          updatedRequest.alliance_withdrawal_request_member_id,
-        alliance_notification_message: `${
-          status === "APPROVED"
-            ? "Congratulations! Withdrawal Request Sent"
-            : `Withdrawal Request Failed, ${note}`
-        }`,
-      },
-    });
+      await tx.alliance_notification_table.create({
+        data: {
+          alliance_notification_user_id:
+            updatedRequest.alliance_withdrawal_request_member_id,
+          alliance_notification_message: `${
+            status === "APPROVED"
+              ? "Congratulations! Withdrawal Request Sent"
+              : `Withdrawal Request Failed, ${note}`
+          }`,
+        },
+      });
+    }
 
     return updatedRequest;
   });
@@ -395,6 +400,7 @@ export const withdrawListPostModel = async (params: {
       APPROVED: { data: [], count: BigInt(0) },
       REJECTED: { data: [], count: BigInt(0) },
       PENDING: { data: [], count: BigInt(0) },
+      HOLD: { data: [], count: BigInt(0) },
     },
     totalCount: BigInt(0),
     totalPendingWithdrawal: 0,
@@ -524,7 +530,7 @@ export const withdrawListPostModel = async (params: {
       GROUP BY t.alliance_withdrawal_request_status
     `;
 
-  ["APPROVED", "REJECTED", "PENDING"].forEach((status) => {
+  ["APPROVED", "REJECTED", "PENDING", "HOLD"].forEach((status) => {
     const match = statusCounts.find((item) => item.status === status);
     returnData.data[status as keyof typeof returnData.data].count = match
       ? BigInt(match.count)

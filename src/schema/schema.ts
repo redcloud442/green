@@ -372,7 +372,7 @@ export const withdrawHistoryPostSchema = z.object({
 });
 
 export const updateWithdrawSchema = z.object({
-  status: z.enum(["APPROVED", "REJECTED"]),
+  status: z.enum(["APPROVED", "REJECTED", "HOLD"]),
   note: z.string().optional(),
   requestId: z.string().uuid(),
 });
@@ -383,7 +383,7 @@ export const withdrawListPostSchema = z.object({
   search: z.string().optional(),
   columnAccessor: z.string().min(3),
   userFilter: z.string().optional(),
-  statusFilter: z.enum(["APPROVED", "REJECTED", "PENDING"]),
+  statusFilter: z.enum(["APPROVED", "REJECTED", "PENDING", "HOLD"]),
   isAscendingSort: z.boolean(),
   dateFilter: z
     .object({
