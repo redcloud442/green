@@ -12,7 +12,6 @@ export const loginModel = async (params: {
     where: {
       user_username: {
         equals: userName,
-        mode: "insensitive",
       },
       alliance_member_table: {
         some: {
