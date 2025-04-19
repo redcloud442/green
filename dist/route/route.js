@@ -93,118 +93,112 @@ app.get("/", (c) => {
           </html>
         `);
 });
-export const generateRandomAmounts = async () => {
-    try {
-        const [startAmount, endAmount] = await Promise.all([
-            redis.get("startAmount"),
-            redis.get("endAmount"),
-        ]);
-        const min = startAmount ? parseInt(startAmount) : 300;
-        const max = endAmount ? parseInt(endAmount) : 1000;
-        if (isNaN(min) || isNaN(max) || min >= max) {
-            console.error("Invalid amount range in Redis");
-            return [];
-        }
-        const randomAmount = generatePrioritizedRandomAmount(min, max);
-        console.log(randomAmount);
-        return [randomAmount];
-    }
-    catch (error) {
-        console.error("Error generating random amount:", error);
-        return [];
-    }
-};
-const generatePrioritizedRandomAmount = (min, max) => {
-    // Decide with a weighted chance: 70% for round numbers, 30% for others
-    const favorRound = Math.random() < 0.8;
-    if (favorRound) {
-        const step = 1000; // change to 100 if you want smaller round values
-        const roundedMin = Math.ceil(min / step) * step;
-        const roundedMax = Math.floor(max / step) * step;
-        const numSteps = Math.floor((roundedMax - roundedMin) / step) + 1;
-        if (numSteps > 0) {
-            const randomIndex = Math.floor(Math.random() * numSteps);
-            return roundedMin + randomIndex * step;
-        }
-    }
-    // Fallback: return any random number if round number not possible or not chosen
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-};
-let isRunning = true;
-let intervalId = null;
-const LOCK_KEY = "notification_lock";
-const LOCK_EXPIRY = 60;
-const startJob = () => {
-    if (intervalId)
-        return; // Prevent multiple intervals
-    const interval = setInterval(async () => {
-        console.log("isRunning", isRunning);
-        if (!isRunning) {
-            clearInterval(interval);
-            intervalId = null;
-            return;
-        }
-        const uniqueLockValue = crypto.randomUUID();
-        try {
-            const lockAcquired = await redis.set(LOCK_KEY, uniqueLockValue, {
-                nx: true,
-                ex: LOCK_EXPIRY,
-            });
-            if (lockAcquired !== "OK") {
-                console.log("Another server is handling the job. Skipping...");
-                return;
-            }
-            // Simulate processing
-            const randomAmounts = await generateRandomAmounts();
-            if (randomAmounts.length > 0) {
-                const packageData = { package_name: "PEAK" };
-                await notificationPostPackageModel({
-                    amount: randomAmounts,
-                    packageData,
-                });
-                console.log("Notification inserted successfully!");
-            }
-            else {
-                console.log("Skipping insert: No valid random amounts generated.");
-            }
-        }
-        catch (error) {
-            console.error("Error processing notification:", error);
-        }
-        finally {
-            const currentLockValue = await redis.get(LOCK_KEY);
-            if (currentLockValue === uniqueLockValue) {
-                await redis.del(LOCK_KEY);
-                console.log("Lock released by this server.");
-            }
-        }
-    }, 60000);
-};
-startJob();
-redisOn.subscribe("notification_control", (err) => {
-    if (err) {
-        console.error("Redis subscription error:", err);
-        return;
-    }
-    console.log("Subscribed to notification_control channel.");
-});
-redisOn.on("message", async (channel, message) => {
-    if (channel === "notification_control") {
-        if (message === "STOP") {
-            isRunning = false;
-            if (intervalId) {
-                console.log("Clearing interval...");
-                clearInterval(intervalId);
-                intervalId = null;
-            }
-        }
-        else if (message === "START") {
-            if (!isRunning) {
-                isRunning = true;
-                startJob();
-            }
-        }
-        await redis.set("notification_control", message);
-    }
-});
+// export const generateRandomAmounts = async (): Promise<number[]> => {
+//   try {
+//     const [startAmount, endAmount] = await Promise.all([
+//       redis.get("startAmount") as Promise<string>,
+//       redis.get("endAmount") as Promise<string>,
+//     ]);
+//     const min = startAmount ? parseInt(startAmount) : 300;
+//     const max = endAmount ? parseInt(endAmount) : 1000;
+//     if (isNaN(min) || isNaN(max) || min >= max) {
+//       console.error("Invalid amount range in Redis");
+//       return [];
+//     }
+//   const randomAmount = generatePrioritizedRandomAmount(min,max)
+//   console.log(randomAmount)
+//     return [randomAmount];
+//   } catch (error) {
+//     console.error("Error generating random amount:", error);
+//     return [];
+//   }
+// };
+// const generatePrioritizedRandomAmount = (min: number, max: number): number => {
+//     // Decide with a weighted chance: 70% for round numbers, 30% for others
+//     const favorRound = Math.random() < 0.8;
+//     if (favorRound) {
+//       const step = 1000; // change to 100 if you want smaller round values
+//       const roundedMin = Math.ceil(min / step) * step;
+//       const roundedMax = Math.floor(max / step) * step;
+//       const numSteps = Math.floor((roundedMax - roundedMin) / step) + 1;
+//       if (numSteps > 0) {
+//         const randomIndex = Math.floor(Math.random() * numSteps);
+//         return roundedMin + randomIndex * step;
+//       }
+//     }
+//     // Fallback: return any random number if round number not possible or not chosen
+//     return Math.floor(Math.random() * (max - min + 1)) + min;
+//   };
+// let isRunning = true;
+// let intervalId: NodeJS.Timeout | null = null;
+// const LOCK_KEY = "notification_lock";
+// const LOCK_EXPIRY = 60;
+// const startJob = () => {
+//   if (intervalId) return; // Prevent multiple intervals
+//   const interval = setInterval(async () => {
+//     console.log("isRunning", isRunning);
+//     if (!isRunning) {
+//       clearInterval(interval);
+//       intervalId = null;
+//       return;
+//     }
+//     const uniqueLockValue = crypto.randomUUID();
+//     try {
+//       const lockAcquired = await redis.set(LOCK_KEY, uniqueLockValue, {
+//         nx: true,
+//         ex: LOCK_EXPIRY,
+//       });
+//       if (lockAcquired !== "OK") {
+//         console.log("Another server is handling the job. Skipping...");
+//         return;
+//       }
+//       // Simulate processing
+//       const randomAmounts = await generateRandomAmounts();
+//       if (randomAmounts.length > 0) {
+//         const packageData = { package_name: "PEAK" };
+//         await notificationPostPackageModel({
+//           amount: randomAmounts,
+//           packageData,
+//         });
+//         console.log("Notification inserted successfully!");
+//       } else {
+//         console.log("Skipping insert: No valid random amounts generated.");
+//       }
+//     } catch (error) {
+//       console.error("Error processing notification:", error);
+//     } finally {
+//       const currentLockValue = await redis.get(LOCK_KEY);
+//       if (currentLockValue === uniqueLockValue) {
+//         await redis.del(LOCK_KEY);
+//         console.log("Lock released by this server.");
+//       }
+//     }
+//   }, 60000);
+// };
+// startJob();
+// redisOn.subscribe("notification_control", (err) => {
+//   if (err) {
+//     console.error("Redis subscription error:", err);
+//     return;
+//   }
+//   console.log("Subscribed to notification_control channel.");
+// });
+// redisOn.on("message", async (channel, message) => {
+//   if (channel === "notification_control") {
+//     if (message === "STOP") {
+//       isRunning = false;
+//       if (intervalId) {
+//         console.log("Clearing interval...");
+//         clearInterval(intervalId);
+//         intervalId = null;
+//       }
+//     } else if (message === "START") {
+//       if (!isRunning) {
+//         isRunning = true;
+//         startJob();
+//       }
+//     }
+//     await redis.set("notification_control", message);
+//   }
+// });
 export default app;

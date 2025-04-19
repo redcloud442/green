@@ -46,3 +46,11 @@ export const getPhilippinesTime = (date, time) => {
     const resultDate = new Date(adjustedDate.getTime() - philippinesOffset);
     return resultDate.toISOString();
 };
+export const generateBonus = (amount) => {
+    let bonus = 0;
+    if (amount < 300) {
+        return bonus;
+    }
+    bonus = amount * 0.1;
+    return bonus;
+};

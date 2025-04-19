@@ -249,16 +249,16 @@ export const packagePostModel = async (params: {
         });
       }
 
-      await tx.package_company_funds_table.update({
-        where: {
-          package_company_funds_id: "abd721e9-90c0-40b1-bd17-c4e7494c5141",
-        },
-        data: {
-          package_company_funds_amount: {
-            decrement: Number(packageAmountEarnings.toFixed(2)),
-          },
-        },
-      });
+      // await tx.package_company_funds_table.update({
+      //   where: {
+      //     package_company_funds_id: "abd721e9-90c0-40b1-bd17-c4e7494c5141",
+      //   },
+      //   data: {
+      //     package_company_funds_amount: {
+      //       decrement: Number(packageAmountEarnings.toFixed(2)),
+      //     },
+      //   },
+      // });
     }
     // if (isFromWallet) {
     //   const message = `${user.user_username} invested ₱ ${amount.toLocaleString(

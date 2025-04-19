@@ -255,6 +255,10 @@ export const claimPackagePutSchema = z.object({
     earnings: z.number(),
     packageConnectionId: z.string().uuid(),
 });
+export const updatePackageFundSchema = z.object({
+    amount: z.number().min(1),
+    type: z.enum(["add", "deduct"]),
+});
 //merchant schema
 export const merchantDeleteSchema = z.object({
     merchantId: z.string().uuid(),
@@ -301,7 +305,7 @@ export const withdrawHistoryPostSchema = z.object({
     userId: z.string().optional(),
 });
 export const updateWithdrawSchema = z.object({
-    status: z.enum(["APPROVED", "REJECTED"]),
+    status: z.enum(["APPROVED", "REJECTED", "HOLD"]),
     note: z.string().optional(),
     requestId: z.string().uuid(),
 });
@@ -311,7 +315,7 @@ export const withdrawListPostSchema = z.object({
     search: z.string().optional(),
     columnAccessor: z.string().min(3),
     userFilter: z.string().optional(),
-    statusFilter: z.enum(["APPROVED", "REJECTED", "PENDING"]),
+    statusFilter: z.enum(["APPROVED", "REJECTED", "PENDING", "HOLD"]),
     isAscendingSort: z.boolean(),
     dateFilter: z
         .object({

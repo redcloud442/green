@@ -5,8 +5,6 @@ import { getPhilippinesTime } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 export const depositPostModel = async (params) => {
     const { amount, accountName, accountNumber, publicUrls, topUpMode } = params.TopUpFormValues;
-    const startDate = getPhilippinesTime(new Date(), "start");
-    const endDate = getPhilippinesTime(new Date(), "end");
     const merchantData = await prisma.merchant_table.findFirst({
         where: {
             merchant_id: topUpMode,
@@ -84,6 +82,7 @@ export const depositPutModel = async (params) => {
         if (existingRequest.alliance_top_up_request_status !== "PENDING") {
             throw new Error("Request is not pending.");
         }
+        // const bonus = generateBonus(existingRequest.alliance_top_up_request_amount);
         const updatedRequest = await tx.alliance_top_up_request_table.update({
             where: { alliance_top_up_request_id: requestId },
             data: {
@@ -95,7 +94,7 @@ export const depositPutModel = async (params) => {
         });
         await tx.alliance_transaction_table.create({
             data: {
-                transaction_description: `Deposit ${status === "APPROVED" ? "Success" : "Failed"} ${note ? `(${note})` : ""}`,
+                transaction_description: `Deposit ${status === "APPROVED" ? `Success` : `Failed`} ${note ? `(${note})` : ""}`,
                 transaction_amount: updatedRequest.alliance_top_up_request_amount,
                 transaction_member_id: updatedRequest.alliance_top_up_request_member_id,
             },

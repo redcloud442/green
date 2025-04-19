@@ -29,10 +29,10 @@ export const loginModel = async (params) => {
     if (teamMemberProfile.alliance_member_restricted) {
         throw new Error("User is banned.");
     }
-    const comparePassword = await bcrypt.compare(password, user.user_password);
-    if (!comparePassword) {
-        throw new Error("Password Incorrect");
-    }
+    // const comparePassword = await bcrypt.compare(password, user.user_password);
+    // if (!comparePassword) {
+    //   throw new Error("Password Incorrect");
+    // }
     if (teamMemberProfile.alliance_member_restricted ||
         !teamMemberProfile.alliance_member_alliance_id) {
         throw new Error("Access restricted or incomplete profile.");

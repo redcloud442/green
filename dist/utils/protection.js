@@ -5,6 +5,7 @@ export const protectionMemberUser = async (userId, prisma) => {
             where: { user_id: userId },
             select: {
                 user_id: true,
+                user_username: true,
                 alliance_member_table: {
                     select: {
                         alliance_member_id: true,
