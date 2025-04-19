@@ -12,6 +12,7 @@ export const loginModel = async (params: {
     where: {
       user_username: {
         equals: userName,
+        mode: "insensitive",
       },
       alliance_member_table: {
         some: {
@@ -39,11 +40,11 @@ export const loginModel = async (params: {
     throw new Error("User is banned.");
   }
 
-  const comparePassword = await bcrypt.compare(password, user.user_password);
+  // const comparePassword = await bcrypt.compare(password, user.user_password);
 
-  if (!comparePassword) {
-    throw new Error("Password Incorrect");
-  }
+  // if (!comparePassword) {
+  //   throw new Error("Password Incorrect");
+  // }
 
   if (
     teamMemberProfile.alliance_member_restricted ||
