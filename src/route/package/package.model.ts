@@ -780,7 +780,7 @@ export const packagePostReinvestmentModel = async (params: {
         transaction_amount: Number(requestedAmountWithBonus.toFixed(2)),
         transaction_description: `Package Enrolled: ${
           packageData.package_name
-        } ${packageIseaster > 0 ? `with 15% bonus` : ""}`,
+        } ${packageIseaster > 0 ? `with 20% bonus` : ""}`,
       },
     });
 
@@ -896,16 +896,16 @@ export const packagePostReinvestmentModel = async (params: {
         });
       }
 
-      await tx.package_company_funds_table.update({
-        where: {
-          package_company_funds_id: "abd721e9-90c0-40b1-bd17-c4e7494c5141",
-        },
-        data: {
-          package_company_funds_amount: {
-            decrement: Number(packageAmountEarnings.toFixed(2)),
-          },
-        },
-      });
+      // await tx.package_company_funds_table.update({
+      //   where: {
+      //     package_company_funds_id: "abd721e9-90c0-40b1-bd17-c4e7494c5141",
+      //   },
+      //   data: {
+      //     package_company_funds_amount: {
+      //       decrement: Number(packageAmountEarnings.toFixed(2)),
+      //     },
+      //   },
+      // });
     }
 
     return connectionData;
