@@ -75,7 +75,7 @@ export const generateBonus = (amount: number) => {
     return bonus;
   }
 
-  bonus = amount * 0.1;
+  bonus = amount * 0.15;
 
   return bonus;
 };
