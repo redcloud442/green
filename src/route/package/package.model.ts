@@ -716,10 +716,10 @@ export const packagePostReinvestmentModel = async (params: {
       throw new Error("Insufficient balance in the wallet.");
     }
 
-    const bonusAmount = requestedAmount * 0.15;
+    const bonusAmount = requestedAmount * 0.2;
 
     const packageIseaster =
-      packageData.package_name === "EASTER" ? bonusAmount : 0;
+      packageData.package_name === "BIRTHDAY" ? bonusAmount : 0;
 
     const finalAmount = requestedAmount + packageIseaster;
 
