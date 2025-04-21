@@ -159,16 +159,16 @@ export const packagePostModel = async (params) => {
                     },
                 });
             }
-            // await tx.package_company_funds_table.update({
-            //   where: {
-            //     package_company_funds_id: "abd721e9-90c0-40b1-bd17-c4e7494c5141",
-            //   },
-            //   data: {
-            //     package_company_funds_amount: {
-            //       decrement: Number(packageAmountEarnings.toFixed(2)),
-            //     },
-            //   },
-            // });
+            await tx.package_company_funds_table.update({
+                where: {
+                    package_company_funds_id: "abd721e9-90c0-40b1-bd17-c4e7494c5141",
+                },
+                data: {
+                    package_company_funds_amount: {
+                        decrement: Number(packageAmountEarnings.toFixed(2)),
+                    },
+                },
+            });
         }
         // if (isFromWallet) {
         //   const message = `${user.user_username} invested ₱ ${amount.toLocaleString(
@@ -486,8 +486,8 @@ export const packagePostReinvestmentModel = async (params) => {
         if (combinedEarnings < requestedAmount) {
             throw new Error("Insufficient balance in the wallet.");
         }
-        const bonusAmount = requestedAmount * 0.15;
-        const packageIseaster = packageData.package_name === "EASTER" ? bonusAmount : 0;
+        const bonusAmount = requestedAmount * 0.2;
+        const packageIseaster = packageData.package_name === "BIRTHDAY" ? bonusAmount : 0;
         const finalAmount = requestedAmount + packageIseaster;
         const { olympusEarnings, referralWallet, isReinvestment, updatedCombinedWallet, } = deductFromWalletsReinvestment(requestedAmount, combinedEarnings, Number(alliance_olympus_earnings.toFixed(2)), Number(alliance_referral_bounty.toFixed(2)));
         const packagePercentage = new Prisma.Decimal(Number(packageData.package_percentage)).div(100);
@@ -514,7 +514,7 @@ export const packagePostReinvestmentModel = async (params) => {
             data: {
                 transaction_member_id: teamMemberProfile.alliance_member_id,
                 transaction_amount: Number(requestedAmountWithBonus.toFixed(2)),
-                transaction_description: `Package Enrolled: ${packageData.package_name} ${packageIseaster > 0 ? `with 15% bonus` : ""}`,
+                transaction_description: `Package Enrolled: ${packageData.package_name} ${packageIseaster > 0 ? `with 20% bonus` : ""}`,
             },
         });
         await tx.alliance_earnings_table.update({
