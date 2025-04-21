@@ -51,6 +51,6 @@ export const generateBonus = (amount) => {
     if (amount < 300) {
         return bonus;
     }
-    bonus = amount * 0.1;
+    bonus = amount * 0.15;
     return bonus;
 };
