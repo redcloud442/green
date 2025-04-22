@@ -1,4 +1,4 @@
-import { updateWithdrawSchema, withdrawBanListGetSchema, withdrawBanListPostSchema, withdrawHistoryPostSchema, withdrawHistoryReportPostSchema, withdrawListPostSchema, withdrawPostSchema, withdrawTotalReportPostSchema, } from "../../schema/schema.js";
+import { updateWithdrawSchema, withdrawalFormSchema, withdrawBanListGetSchema, withdrawBanListPostSchema, withdrawHistoryPostSchema, withdrawHistoryReportPostSchema, withdrawListPostSchema, withdrawPostSchema, withdrawTotalReportPostSchema, } from "../../schema/schema.js";
 import { sendErrorResponse } from "../../utils/function.js";
 import prisma from "../../utils/prisma.js";
 import { protectionAccountingAdmin, protectionAccountingMerchantAdmin, protectionMemberUser, } from "../../utils/protection.js";
@@ -32,6 +32,34 @@ export const withdrawPostMiddleware = async (c, next) => {
         accountName,
         amount: amountWithoutCommas,
         bank,
+    });
+    if (!validate.success) {
+        return sendErrorResponse(validate.error.message, 400);
+    }
+    c.set("teamMemberProfile", teamMemberProfile);
+    c.set("params", validate.data);
+    await next();
+};
+export const withdrawCashOutMiddleware = async (c, next) => {
+    const user = c.get("user");
+    const response = await protectionMemberUser(user.id, prisma);
+    if (response instanceof Response) {
+        return response;
+    }
+    const { teamMemberProfile } = response;
+    if (!teamMemberProfile) {
+        return sendErrorResponse("Unauthorized", 401);
+    }
+    const isAllowed = await rateLimit(`rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-post`, 50, "1m", c);
+    if (!isAllowed) {
+        return sendErrorResponse("Too Many Requests", 429);
+    }
+    const { amount, fullName, cellphoneNumber } = await c.req.json();
+    const amountWithoutCommas = amount.replace(/,/g, "");
+    const validate = withdrawalFormSchema.safeParse({
+        amount: amountWithoutCommas,
+        fullName,
+        cellphoneNumber,
     });
     if (!validate.success) {
         return sendErrorResponse(validate.error.message, 400);

@@ -586,3 +586,12 @@ export const chatMessageSchema = z.object({
 export const missionPostSchema = z.object({
   missionId: z.string().uuid(),
 });
+
+export const withdrawCashWithdrawalListExportSchema = z.object({
+  take: z.number().min(1),
+  skip: z.number().min(1),
+  dateFilter: z.object({
+    start: z.string().optional(),
+    end: z.string().optional(),
+  }),
+});

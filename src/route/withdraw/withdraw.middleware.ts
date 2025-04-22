@@ -4,6 +4,7 @@ import {
   withdrawalFormSchema,
   withdrawBanListGetSchema,
   withdrawBanListPostSchema,
+  withdrawCashWithdrawalListExportSchema,
   withdrawHistoryPostSchema,
   withdrawHistoryReportPostSchema,
   withdrawListPostSchema,
@@ -528,6 +529,57 @@ export const withdrawBanListDeleteMiddleware = async (
 
   c.set("teamMemberProfile", teamMemberProfile);
   c.set("params", { accountNumber });
+
+  await next();
+};
+
+export const withdrawCashWithdrawalListExportMiddleware = async (
+  c: Context,
+  next: Next
+) => {
+  const user = c.get("user");
+
+  const response = await protectionAccountingMerchantAdmin(user.id, prisma);
+
+  if (response instanceof Response) {
+    return response;
+  }
+
+  const { teamMemberProfile } = response;
+
+  if (!teamMemberProfile) {
+    return sendErrorResponse("Unauthorized", 401);
+  }
+
+  const isAllowed = await rateLimit(
+    `rate-limit:${teamMemberProfile.alliance_member_id}:withdraw-ban-list-get`,
+    100,
+    "1m",
+    c
+  );
+
+  if (!isAllowed) {
+    return sendErrorResponse("Too Many Requests", 429);
+  }
+
+  const { take, skip, dateFilter } = await c.req.json();
+
+  if (!take || !skip) {
+    return sendErrorResponse("Take and skip are required", 400);
+  }
+
+  const validate = withdrawCashWithdrawalListExportSchema.safeParse({
+    take,
+    skip,
+    dateFilter,
+  });
+
+  if (!validate.success) {
+    return sendErrorResponse(validate.error.message, 400);
+  }
+
+  c.set("teamMemberProfile", teamMemberProfile);
+  c.set("params", validate.data);
 
   await next();
 };

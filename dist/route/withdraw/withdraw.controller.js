@@ -1,5 +1,5 @@
 import { sendErrorResponse } from "../../utils/function.js";
-import { updateWithdrawModel, withdrawBanListDeleteModel, withdrawBanListGetModel, withdrawBanListPostModel, withdrawGetModel, withdrawHistoryModel, withdrawHistoryReportPostModel, withdrawHistoryReportPostTotalModel, withdrawListPostModel, withdrawModel, } from "./withdraw.model.js";
+import { updateWithdrawModel, withdrawBanListDeleteModel, withdrawBanListGetModel, withdrawBanListPostModel, withdrawCashListPostModel, withdrawCashOutModel, withdrawGetModel, withdrawHistoryModel, withdrawHistoryReportPostModel, withdrawHistoryReportPostTotalModel, withdrawListPostModel, withdrawModel, } from "./withdraw.model.js";
 export const withdrawPostController = async (c) => {
     try {
         const params = c.get("params");
@@ -11,6 +11,21 @@ export const withdrawPostController = async (c) => {
         return c.json({ message: "Withdrawal successful" }, 200);
     }
     catch (e) {
+        return sendErrorResponse("Internal Server Error", 500);
+    }
+};
+export const withdrawCashOutController = async (c) => {
+    try {
+        const params = c.get("params");
+        const teamMemberProfile = c.get("teamMemberProfile");
+        await withdrawCashOutModel({
+            ...params,
+            teamMemberProfile,
+        });
+        return c.json({ message: "Cash Withdrawal successful" }, 200);
+    }
+    catch (e) {
+        console.log(e);
         return sendErrorResponse("Internal Server Error", 500);
     }
 };
@@ -54,6 +69,22 @@ export const withdrawListPostController = async (c) => {
         return c.json(data, 200);
     }
     catch (e) {
+        console.log(e);
+        return sendErrorResponse("Internal Server Error", 500);
+    }
+};
+export const withdrawCashListPostController = async (c) => {
+    try {
+        const params = c.get("params");
+        const teamMemberProfile = c.get("teamMemberProfile");
+        const data = await withdrawCashListPostModel({
+            parameters: params,
+            teamMemberProfile,
+        });
+        return c.json(data, 200);
+    }
+    catch (e) {
+        console.log(e);
         return sendErrorResponse("Internal Server Error", 500);
     }
 };

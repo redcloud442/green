@@ -1189,3 +1189,69 @@ function deductFromWallets(
     updatedCombinedWallet: combinedWallet - amount,
   };
 }
+
+export const withdrawCashWithdrawalListExportModel = async (params: {
+  parameters: {
+    take: number;
+    skip: number;
+    dateFilter?: {
+      start: string;
+      end: string;
+    };
+  };
+  teamMemberProfile: alliance_member_table;
+}) => {
+  const { take, skip, dateFilter } = params.parameters;
+
+  const { start, end } = dateFilter || {
+    start: "",
+    end: "",
+  };
+
+  const offset = (skip - 1) * take;
+  const startDate = getPhilippinesTime(new Date(start), "start");
+  const endDate = getPhilippinesTime(new Date(end), "end");
+
+  const withdrawals = await prisma.alliance_withdrawal_request_table.findMany({
+    where: {
+      alliance_withdrawal_request_date: {
+        gte: startDate,
+        lte: endDate,
+      },
+      alliance_withdrawal_request_withdraw_type: "CASH",
+    },
+    select: {
+      alliance_withdrawal_request_bank_name: true,
+      alliance_withdrawal_request_amount: true,
+      alliance_withdrawal_request_cellphone_number: true,
+      alliance_withdrawal_request_date: true,
+    },
+    orderBy: {
+      alliance_withdrawal_request_date: "desc",
+    },
+    skip: offset,
+    take,
+  });
+
+  const formattedWithdrawals = withdrawals.map((withdrawal) => ({
+    "Full Name": withdrawal.alliance_withdrawal_request_bank_name,
+    Amount: withdrawal.alliance_withdrawal_request_amount,
+    "Cellphone Number": withdrawal.alliance_withdrawal_request_cellphone_number,
+    "Date Created": withdrawal.alliance_withdrawal_request_date,
+  }));
+
+  const count = await prisma.alliance_withdrawal_request_table.count({
+    where: {
+      alliance_withdrawal_request_date: {
+        gte: startDate,
+        lte: endDate,
+      },
+      alliance_withdrawal_request_withdraw_type: "CASH",
+    },
+  });
+
+  return {
+    data: formattedWithdrawals,
+    count,
+  };
+};
