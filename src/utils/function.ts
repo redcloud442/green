@@ -37,6 +37,11 @@ export const calculateFinalAmount = (
   return amount;
 };
 
+export const calculateFinalAmountCash = (amount: number): number => {
+  const fee = amount * 0.1;
+  return amount + fee;
+};
+
 export const calculateFee = (
   amount: number,
   selectedEarnings: string

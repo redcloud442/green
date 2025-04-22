@@ -2,6 +2,7 @@ import { Prisma, type alliance_member_table } from "@prisma/client";
 import {
   calculateFee,
   calculateFinalAmount,
+  calculateFinalAmountCash,
   getPhilippinesTime,
 } from "../../utils/function.js";
 import type {
@@ -189,6 +190,134 @@ export const withdrawModel = async (params: {
             maximumFractionDigits: 2,
             minimumFractionDigits: 2,
           })}. Please wait for approval.`,
+        },
+      });
+  });
+};
+
+export const withdrawCashOutModel = async (params: {
+  amount: number;
+  fullName: string;
+  cellphoneNumber: string;
+  teamMemberProfile: alliance_member_table;
+}) => {
+  const { amount, fullName, cellphoneNumber, teamMemberProfile } = params;
+
+  await prisma.$transaction(async (tx) => {
+    const startDate = getPhilippinesTime(new Date(), "start");
+
+    const endDate = getPhilippinesTime(new Date(), "end");
+
+    const existingPackageWithdrawal =
+      await tx.alliance_withdrawal_request_table.findFirst({
+        where: {
+          alliance_withdrawal_request_member_id:
+            teamMemberProfile.alliance_member_id,
+          alliance_withdrawal_request_status: {
+            in: ["PENDING", "APPROVED"],
+          },
+
+          alliance_withdrawal_request_date: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      });
+
+    if (existingPackageWithdrawal) {
+      throw new Error(
+        `You have already made a cash withdrawal today. Please try again tomorrow.`
+      );
+    }
+
+    const amountMatch = await tx.$queryRaw<
+      {
+        alliance_combined_earnings: number;
+        alliance_olympus_wallet: number;
+        alliance_olympus_earnings: number;
+        alliance_referral_bounty: number;
+      }[]
+    >`SELECT
+   alliance_combined_earnings,
+   alliance_olympus_wallet,
+   alliance_olympus_earnings,
+   alliance_referral_bounty
+   FROM alliance_schema.alliance_earnings_table
+   WHERE alliance_earnings_member_id = ${teamMemberProfile.alliance_member_id}::uuid
+   FOR UPDATE`;
+
+    if (!amountMatch[0]) {
+      throw new Error("Invalid request.");
+    }
+
+    const amountValue = Math.round(Number(amount) * 100) / 100;
+
+    const earningsValue =
+      Math.round(
+        Number(
+          amountMatch[0].alliance_olympus_earnings +
+            amountMatch[0].alliance_referral_bounty
+        ) * 100
+      ) / 100;
+
+    if (amountValue > earningsValue) {
+      throw new Error("Insufficient balance.");
+    }
+
+    const { olympusEarnings, referralWallet, updatedCombinedWallet } =
+      deductFromWallets(
+        Number(amount),
+        Number(amountMatch[0].alliance_combined_earnings),
+        Number(amountMatch[0].alliance_olympus_earnings),
+        Number(amountMatch[0].alliance_referral_bounty)
+      );
+
+    const finalAmount = calculateFinalAmountCash(Number(amount));
+
+    await tx.alliance_withdrawal_request_table.create({
+      data: {
+        alliance_withdrawal_request_amount: finalAmount,
+        alliance_withdrawal_request_type: "cash_withdrawal",
+        alliance_withdrawal_request_account: "cash_withdrawal",
+        alliance_withdrawal_request_fee: 0,
+        alliance_withdrawal_request_cellphone_number: cellphoneNumber,
+        alliance_withdrawal_request_withdraw_amount: finalAmount,
+        alliance_withdrawal_request_bank_name: fullName,
+        alliance_withdrawal_request_status: "PENDING",
+        alliance_withdrawal_request_member_id:
+          teamMemberProfile.alliance_member_id,
+        alliance_withdrawal_request_withdraw_type: "CASH",
+      },
+    });
+
+    await tx.alliance_earnings_table.update({
+      where: {
+        alliance_earnings_member_id: teamMemberProfile.alliance_member_id,
+      },
+      data: {
+        alliance_combined_earnings: updatedCombinedWallet,
+        alliance_olympus_earnings: olympusEarnings,
+        alliance_referral_bounty: referralWallet,
+      },
+    });
+    // Log the transaction
+    await prisma.alliance_transaction_table.create({
+      data: {
+        transaction_amount: finalAmount,
+        transaction_description: "Cash Withdrawal Ongoing",
+        transaction_member_id: teamMemberProfile.alliance_member_id,
+      },
+    }),
+      await prisma.alliance_notification_table.create({
+        data: {
+          alliance_notification_user_id: teamMemberProfile.alliance_member_id,
+          alliance_notification_message: `Cash Withdrawal request is Ongoing amounting to ₱ ${finalAmount.toLocaleString(
+            "en-US",
+            {
+              maximumFractionDigits: 2,
+              minimumFractionDigits: 2,
+            }
+          )}. Please wait for approval.`,
         },
       });
   });
@@ -427,7 +556,7 @@ export const withdrawListPostModel = async (params: {
 
   const commonConditions: Prisma.Sql[] = [
     Prisma.raw(
-      `m.alliance_member_alliance_id = '${teamMemberProfile.alliance_member_alliance_id}'::uuid`
+      `m.alliance_member_alliance_id = '${teamMemberProfile.alliance_member_alliance_id}'::uuid AND t.alliance_withdrawal_request_withdraw_type != 'CASH'`
     ),
   ];
 
@@ -606,6 +735,131 @@ export const withdrawListPostModel = async (params: {
       typeof value === "bigint" ? value.toString() : value
     )
   );
+};
+
+export const withdrawCashListPostModel = async (params: {
+  parameters: {
+    page: number;
+    limit: number;
+    search?: string;
+    columnAccessor: string;
+    userFilter?: string;
+    statusFilter: string;
+    isAscendingSort: boolean;
+    dateFilter?: {
+      start: string;
+      end: string;
+    };
+  };
+  teamMemberProfile: alliance_member_table;
+}) => {
+  const { parameters, teamMemberProfile } = params;
+
+  const {
+    page,
+    limit,
+    search,
+    columnAccessor,
+    userFilter,
+    statusFilter,
+    isAscendingSort,
+    dateFilter,
+  } = parameters;
+
+  const offset = (page - 1) * limit;
+  const sortBy = isAscendingSort ? "DESC" : "ASC";
+
+  const orderBy = columnAccessor
+    ? Prisma.sql`ORDER BY ${Prisma.raw(columnAccessor)} ${Prisma.raw(sortBy)}`
+    : Prisma.empty;
+
+  const commonConditions: Prisma.Sql[] = [
+    Prisma.raw(
+      `m.alliance_member_alliance_id = '${teamMemberProfile.alliance_member_alliance_id}'::uuid AND t.alliance_withdrawal_request_withdraw_type = 'CASH'`
+    ),
+  ];
+
+  if (userFilter) {
+    commonConditions.push(Prisma.raw(`u.user_id::TEXT = '${userFilter}'`));
+  }
+
+  if (dateFilter?.start && dateFilter?.end) {
+    const startDate = getPhilippinesTime(new Date(dateFilter.start), "start");
+    const endDate = getPhilippinesTime(new Date(dateFilter.end), "end");
+
+    commonConditions.push(
+      Prisma.raw(
+        `t.alliance_withdrawal_request_date::timestamptz BETWEEN '${startDate}'::timestamptz AND '${endDate}'::timestamptz`
+      )
+    );
+  }
+  if (search) {
+    commonConditions.push(
+      Prisma.raw(
+        `(
+          u.user_username ILIKE '%${search}%'
+          OR u.user_id::TEXT ILIKE '%${search}%'
+          OR u.user_first_name ILIKE '%${search}%'
+          OR u.user_last_name ILIKE '%${search}%'
+        )`
+      )
+    );
+  }
+
+  const dataQueryConditions = [...commonConditions];
+
+  if (statusFilter) {
+    dataQueryConditions.push(
+      Prisma.raw(`t.alliance_withdrawal_request_status = '${statusFilter}'`)
+    );
+  }
+
+  const dataWhereClause = Prisma.sql`${Prisma.join(
+    dataQueryConditions,
+    " AND "
+  )}`;
+
+  const countWhereClause = Prisma.sql`${Prisma.join(
+    commonConditions,
+    " AND "
+  )}`;
+
+  const withdrawals: WithdrawalRequestData[] = await prisma.$queryRaw`
+    SELECT
+      u.user_id,
+      u.user_first_name,
+      u.user_last_name,
+      u.user_email,
+      u.user_username,
+      u.user_profile_picture,
+      m.alliance_member_id,
+      t.*
+    FROM alliance_schema.alliance_withdrawal_request_table t
+    JOIN alliance_schema.alliance_member_table m
+      ON t.alliance_withdrawal_request_member_id = m.alliance_member_id
+    JOIN user_schema.user_table u
+      ON u.user_id = m.alliance_member_user_id
+    WHERE ${dataWhereClause}
+    ${orderBy}
+    LIMIT ${Prisma.raw(limit.toString())}
+    OFFSET ${Prisma.raw(offset.toString())}
+  `;
+
+  const statusCounts: { count: bigint }[] = await prisma.$queryRaw`
+      SELECT
+        COUNT(*) AS count
+      FROM alliance_schema.alliance_withdrawal_request_table t
+      JOIN alliance_schema.alliance_member_table m
+        ON t.alliance_withdrawal_request_member_id = m.alliance_member_id
+      JOIN user_schema.user_table u
+        ON u.user_id = m.alliance_member_user_id
+      WHERE ${countWhereClause}
+    `;
+
+  return {
+    data: withdrawals,
+    totalCount: Number(statusCounts[0]?.count) || 0,
+  };
 };
 
 export const withdrawGetModel = async (
@@ -886,3 +1140,52 @@ export const withdrawBanListDeleteModel = async (params: {
     message: "Account number removed from the ban list",
   };
 };
+
+function deductFromWallets(
+  amount: number,
+  combinedWallet: number,
+  olympusEarnings: number,
+  referralWallet: number
+) {
+  let remaining = amount;
+
+  // Validate total funds
+  if (combinedWallet < amount) {
+    throw new Error("Insufficient balance in combined wallet.");
+  }
+
+  if (remaining > 0) {
+    if (olympusEarnings >= remaining) {
+      olympusEarnings -= remaining;
+      remaining = 0;
+    } else {
+      remaining -= olympusEarnings;
+      olympusEarnings = 0;
+    }
+  }
+
+  // Deduct from Referral Wallet
+  if (remaining > 0) {
+    if (referralWallet >= remaining) {
+      referralWallet -= remaining;
+      remaining = 0;
+    } else {
+      remaining -= referralWallet;
+      referralWallet = 0;
+    }
+  }
+
+  remaining = Math.round(remaining * 1000000) / 1000000;
+
+  // If any balance remains, throw an error
+  if (remaining > 0) {
+    throw new Error("Insufficient funds to complete the transaction.");
+  }
+
+  // Return updated balances and remaining combined wallet
+  return {
+    olympusEarnings,
+    referralWallet,
+    updatedCombinedWallet: combinedWallet - amount,
+  };
+}
