@@ -7,6 +7,7 @@ import {
   withdrawBanListPostModel,
   withdrawCashListPostModel,
   withdrawCashOutModel,
+  withdrawCashWithdrawalListExportModel,
   withdrawGetModel,
   withdrawHistoryModel,
   withdrawHistoryReportPostModel,
@@ -192,6 +193,25 @@ export const withdrawBanListDeleteController = async (c: Context) => {
     const params = c.get("params");
 
     const data = await withdrawBanListDeleteModel(params);
+
+    return c.json(data, 200);
+  } catch (e) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const withdrawCashWithdrawalListExportController = async (
+  c: Context
+) => {
+  try {
+    const params = c.get("params");
+
+    const teamMemberProfile = c.get("teamMemberProfile");
+
+    const data = await withdrawCashWithdrawalListExportModel({
+      parameters: params,
+      teamMemberProfile,
+    });
 
     return c.json(data, 200);
   } catch (e) {

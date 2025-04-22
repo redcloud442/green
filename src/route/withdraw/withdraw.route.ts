@@ -6,6 +6,7 @@ import {
   withdrawBanListPostController,
   withdrawCashListPostController,
   withdrawCashOutController,
+  withdrawCashWithdrawalListExportController,
   withdrawGetController,
   withdrawHistoryPostController,
   withdrawHistoryReportPostController,
@@ -19,6 +20,7 @@ import {
   withdrawBanListGetMiddleware,
   withdrawBanListPostMiddleware,
   withdrawCashOutMiddleware,
+  withdrawCashWithdrawalListExportMiddleware,
   withdrawGetMiddleware,
   withdrawHistoryPostMiddleware,
   withdrawHistoryReportPostMiddleware,
@@ -83,6 +85,12 @@ withdraw.delete(
   "/ban-list/:accountNumber",
   withdrawBanListDeleteMiddleware,
   withdrawBanListDeleteController
+);
+
+withdraw.post(
+  "/cash-withdrawal-list/export",
+  withdrawCashWithdrawalListExportMiddleware,
+  withdrawCashWithdrawalListExportController
 );
 
 export default withdraw;

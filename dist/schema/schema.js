@@ -296,6 +296,25 @@ export const withdrawPostSchema = z.object({
         .min(6, "Account number is required")
         .max(24, "Account number must be at most 24 digits"),
 });
+export const withdrawalFormSchema = z.object({
+    amount: z
+        .string()
+        .min(2, "Minimum amount is required atleast 30 pesos")
+        .refine((amount) => Number(amount.replace(/,/g, "")) >= 30, {
+        message: "Amount must be at least 30 pesos",
+    }),
+    fullName: z.string().min(1, "Please select a bank"),
+    cellphoneNumber: z
+        .string()
+        .optional()
+        .refine((number) => {
+        if (number === undefined)
+            return true;
+        return number === "" || /^\d{11}$/.test(number);
+    }, {
+        message: "Please enter a valid 11-digit cellphone number",
+    }),
+});
 export const withdrawHistoryPostSchema = z.object({
     page: z.number().min(1),
     limit: z.number().min(1).max(10),

@@ -23,6 +23,10 @@ export const calculateFinalAmount = (amount, selectedEarnings) => {
     }
     return amount;
 };
+export const calculateFinalAmountCash = (amount) => {
+    const fee = amount * 0.1;
+    return amount + fee;
+};
 export const calculateFee = (amount, selectedEarnings) => {
     if (selectedEarnings === "PACKAGE") {
         const fee = amount * 0.1;

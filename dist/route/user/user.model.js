@@ -172,6 +172,7 @@ export const userModelGet = async (params) => {
     let canWithdrawPackage = false;
     let canWithdrawReferral = false;
     let canUserDeposit = false;
+    let canWithdrawCash = false;
     const todayStart = getPhilippinesTime(new Date(), "start");
     const todayEnd = getPhilippinesTime(new Date(), "end");
     const existingPackageWithdrawal = await prisma.alliance_withdrawal_request_table.findFirst({
@@ -181,6 +182,19 @@ export const userModelGet = async (params) => {
                 in: ["PENDING", "APPROVED"],
             },
             alliance_withdrawal_request_withdraw_type: "PACKAGE",
+            alliance_withdrawal_request_date: {
+                gte: todayStart, // Start of the day
+                lte: todayEnd, // End of the day
+            },
+        },
+    });
+    const existingCashWithdrawal = await prisma.alliance_withdrawal_request_table.findFirst({
+        where: {
+            alliance_withdrawal_request_member_id: memberId,
+            alliance_withdrawal_request_status: {
+                in: ["PENDING", "APPROVED"],
+            },
+            alliance_withdrawal_request_withdraw_type: "CASH",
             alliance_withdrawal_request_date: {
                 gte: todayStart, // Start of the day
                 lte: todayEnd, // End of the day
@@ -207,6 +221,9 @@ export const userModelGet = async (params) => {
     if (existingReferralWithdrawal !== null) {
         canWithdrawReferral = true;
     }
+    if (existingCashWithdrawal !== null) {
+        canWithdrawCash = true;
+    }
     const existingDeposit = await prisma.alliance_top_up_request_table.findFirst({
         where: {
             alliance_top_up_request_member_id: memberId,
@@ -220,7 +237,12 @@ export const userModelGet = async (params) => {
     if (existingDeposit !== null) {
         canUserDeposit = true;
     }
-    return { canWithdrawPackage, canWithdrawReferral, canUserDeposit };
+    return {
+        canWithdrawPackage,
+        canWithdrawReferral,
+        canUserDeposit,
+        canWithdrawCash,
+    };
 };
 export const userPatchModel = async (params) => {
     const { memberId, action, role, type } = params;
