@@ -4,6 +4,8 @@ import {
   withdrawBanListDeleteController,
   withdrawBanListGetController,
   withdrawBanListPostController,
+  withdrawCashListPostController,
+  withdrawCashOutController,
   withdrawGetController,
   withdrawHistoryPostController,
   withdrawHistoryReportPostController,
@@ -16,6 +18,7 @@ import {
   withdrawBanListDeleteMiddleware,
   withdrawBanListGetMiddleware,
   withdrawBanListPostMiddleware,
+  withdrawCashOutMiddleware,
   withdrawGetMiddleware,
   withdrawHistoryPostMiddleware,
   withdrawHistoryReportPostMiddleware,
@@ -27,6 +30,12 @@ import {
 const withdraw = new Hono();
 
 withdraw.post("/", withdrawPostMiddleware, withdrawPostController);
+
+withdraw.post(
+  "/cash-withdrawal",
+  withdrawCashOutMiddleware,
+  withdrawCashOutController
+);
 
 withdraw.get("/", withdrawGetMiddleware, withdrawGetController);
 
@@ -51,6 +60,12 @@ withdraw.post(
 withdraw.put("/:id", updateWithdrawMiddleware, updateWithdrawPostController);
 
 withdraw.post("/list", withdrawListPostMiddleware, withdrawListPostController);
+
+withdraw.post(
+  "/withdraw-cash-list",
+  withdrawListPostMiddleware,
+  withdrawCashListPostController
+);
 
 withdraw.post(
   "/ban-list",

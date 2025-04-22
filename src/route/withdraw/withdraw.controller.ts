@@ -5,6 +5,8 @@ import {
   withdrawBanListDeleteModel,
   withdrawBanListGetModel,
   withdrawBanListPostModel,
+  withdrawCashListPostModel,
+  withdrawCashOutModel,
   withdrawGetModel,
   withdrawHistoryModel,
   withdrawHistoryReportPostModel,
@@ -26,6 +28,24 @@ export const withdrawPostController = async (c: Context) => {
 
     return c.json({ message: "Withdrawal successful" }, 200);
   } catch (e) {
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const withdrawCashOutController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    const teamMemberProfile = c.get("teamMemberProfile");
+
+    await withdrawCashOutModel({
+      ...params,
+      teamMemberProfile,
+    });
+
+    return c.json({ message: "Cash Withdrawal successful" }, 200);
+  } catch (e) {
+    console.log(e);
     return sendErrorResponse("Internal Server Error", 500);
   }
 };
@@ -79,6 +99,25 @@ export const withdrawListPostController = async (c: Context) => {
 
     return c.json(data, 200);
   } catch (e) {
+    console.log(e);
+    return sendErrorResponse("Internal Server Error", 500);
+  }
+};
+
+export const withdrawCashListPostController = async (c: Context) => {
+  try {
+    const params = c.get("params");
+
+    const teamMemberProfile = c.get("teamMemberProfile");
+
+    const data = await withdrawCashListPostModel({
+      parameters: params,
+      teamMemberProfile,
+    });
+
+    return c.json(data, 200);
+  } catch (e) {
+    console.log(e);
     return sendErrorResponse("Internal Server Error", 500);
   }
 };
